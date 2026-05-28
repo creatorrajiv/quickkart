@@ -17,6 +17,7 @@ import { STATUS_LABELS, STATUS_COLORS, STATUS_ICONS } from '../../config/orderSt
 import { NotificationBell }        from '../../components/common';
 import { BottomNav }               from '../../components/customer';
 import { Badge, EmptyState, Button } from '../../ui';
+import { useReorder }              from '../../hooks/useReorder';
 
 const FILTERS = [
   { key: 'all',       label: 'All' },
@@ -121,6 +122,8 @@ export default function OrdersPage() {
               {filtered.map(order => <OrderListItem key={order.id} order={order} />)}
             </ul>
           )}
+
+          {/* Defensive — render BottomNav only here once we know we're staying on page */}
         </div>
       </main>
 
@@ -132,6 +135,7 @@ export default function OrdersPage() {
 // ─── Sub-views ─────────────────────────────────────────────────────────────
 
 function OrderListItem({ order }) {
+  const { reorder, busy: reordering } = useReorder();
   const shortId = order.id?.split('-')[0] ?? '';
   const colors  = STATUS_COLORS[order.status] ?? STATUS_COLORS.placed;
   const icon    = STATUS_ICONS[order.status]  ?? '📦';
@@ -140,6 +144,7 @@ function OrderListItem({ order }) {
   const placedAt = new Date(order.created_at).toLocaleString('en-IN', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
+  const canReorder = ['delivered','cancelled'].includes(order.status);
 
   // Up to 3 thumbnails from the order
   const thumbs = (order.order_items ?? []).slice(0, 3);
@@ -187,6 +192,15 @@ function OrderListItem({ order }) {
           <p className="ml-auto text-xs text-ink-500">{itemCount} item{itemCount === 1 ? '' : 's'}</p>
         </div>
       </Link>
+      {canReorder && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); reorder(order); }}
+          disabled={reordering}
+          className="mt-2 w-full rounded-xl bg-white border-2 border-brand-500 text-brand-600 font-bold text-xs py-2.5 hover:bg-brand-500 hover:text-white active:scale-[0.98] disabled:opacity-60 transition-all"
+        >
+          {reordering ? 'Adding to cart…' : '🔁 Reorder these items'}
+        </button>
+      )}
     </li>
   );
 }

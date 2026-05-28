@@ -19,7 +19,8 @@ import { useAuth }                      from '../../context/AuthContext';
 import { placeOrder }                   from '../../services/ordersService';
 import { calculateOrderTotals,
          PAYMENT_METHODS,
-         formatPrice }                  from '../../config/business';
+         formatPrice,
+         getDeliveryETA }               from '../../config/business';
 import { notify }                       from '../../lib/notify';
 import { openWhatsAppOrder, isWhatsAppShareEnabled } from '../../lib/whatsapp';
 
@@ -205,6 +206,7 @@ function EmptyCart({ onShop }) {
 
 function SuccessScreen({ orderId, onContinueShopping, onTrackOrder }) {
   const shortId = orderId?.split('-')[0] ?? '';
+  const eta = getDeliveryETA('placed');
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-ink-50 px-6 text-center relative overflow-hidden">
       {/* Decorative gradient */}
@@ -221,7 +223,16 @@ function SuccessScreen({ orderId, onContinueShopping, onTrackOrder }) {
         <p className="mt-2 text-sm text-ink-600">
           Order <span className="font-mono font-bold text-ink-900">#{shortId}</span> is being prepared.
         </p>
-        <p className="mt-1 text-xs text-ink-500">You'll get notifications when it's on its way.</p>
+        {eta && (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-brand-50 to-accent-50 border border-brand-100 px-4 py-2.5">
+            <span className="text-xl">🛵</span>
+            <div className="text-left">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-ink-500">Arriving in</p>
+              <p className="font-display text-base font-extrabold text-brand-600 leading-tight">{eta.label}</p>
+            </div>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-ink-500">You'll get notifications when it's on its way.</p>
 
         <div className="mt-7 flex flex-col gap-2 w-full max-w-xs mx-auto">
           <Button onClick={onTrackOrder} size="lg" fullWidth>Track Order</Button>

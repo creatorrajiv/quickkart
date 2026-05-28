@@ -72,6 +72,29 @@ export const calculateOrderTotals = (subtotal) => {
   return { subtotal: sub, delivery, tax, total };
 };
 
+// ─── Delivery ETA (estimated time) ──────────────────────────────────────────
+/**
+ * Rough delivery time estimates by order status. These are deliberately
+ * coarse — real estimates require route + agent location and come later.
+ *
+ * Returned as a range so the UI can show "20-30 min" rather than a single
+ * misleading number.
+ *
+ * @param {string} status - current order_status
+ * @returns {{ min:number, max:number, label:string } | null}
+ */
+export const ETA_BY_STATUS = {
+  placed:           { min: 25, max: 40 },
+  preparing:        { min: 15, max: 25 },
+  out_for_delivery: { min: 5,  max: 15 },
+};
+
+export const getDeliveryETA = (status) => {
+  const eta = ETA_BY_STATUS[status];
+  if (!eta) return null;
+  return { ...eta, label: `${eta.min}-${eta.max} min` };
+};
+
 // ─── Payment methods ─────────────────────────────────────────────────────────
 /**
  * Matches the payment_method enum in the database.

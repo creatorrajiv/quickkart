@@ -24,7 +24,8 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrderById, cancelOrder } from '../../services/ordersService';
 import { fetchReviewForOrder, submitReview } from '../../services/reviewsService';
-import { calculateOrderTotals, formatPrice } from '../../config/business';
+import { calculateOrderTotals, formatPrice, getDeliveryETA } from '../../config/business';
+import { useReorder } from '../../hooks/useReorder';
 import { notify } from '../../lib/notify';
 import {
   STATUS_ORDER,
@@ -219,8 +220,29 @@ export default function OrderDetailPage() {
         {order.status === 'delivered' && (
           <ReviewBlock order={order} existing={review} onSubmitted={setReview} />
         )}
+
+        {/* ── Reorder ── */}
+        {['delivered','cancelled'].includes(order.status) && (
+          <ReorderButton order={order} />
+        )}
       </div>
     </Shell>
+  );
+}
+
+function ReorderButton({ order }) {
+  const { reorder, busy } = useReorder();
+  return (
+    <button
+      onClick={() => reorder(order)}
+      disabled={busy}
+      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-brand-500 text-brand-600 font-bold py-3.5 hover:bg-brand-500 hover:text-white active:scale-[0.98] disabled:opacity-60 transition-all"
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      {busy ? 'Adding…' : 'Reorder these items'}
+    </button>
   );
 }
 
@@ -256,6 +278,7 @@ function Shell({ onBack, title, subtitle, children }) {
 
 // ─── Status hero with vertical timeline ────────────────────────────────────
 function StatusHero({ order, placedAt, cancelled }) {
+  const eta = !cancelled ? getDeliveryETA(order.status) : null;
   if (cancelled) {
     return (
       <section className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-red-100 p-5">
@@ -275,15 +298,25 @@ function StatusHero({ order, placedAt, cancelled }) {
   return (
     <section className="rounded-2xl border border-ink-100 bg-white shadow-card overflow-hidden">
       <div className="bg-gradient-to-br from-brand-50 to-accent-50 px-5 py-4 border-b border-ink-100">
-        <p className="text-[11px] uppercase tracking-wider text-ink-500 font-bold">Current status</p>
-        <div className="mt-1 flex items-center gap-3">
-          <span className="text-3xl animate-pulse-soft">{STATUS_ICONS[order.status]}</span>
-          <div>
-            <h2 className="font-display text-xl font-bold text-ink-900">
-              {STATUS_LABELS[order.status]}
-            </h2>
-            <p className="text-xs text-ink-600">Placed on {placedAt}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] uppercase tracking-wider text-ink-500 font-bold">Current status</p>
+            <div className="mt-1 flex items-center gap-3">
+              <span className="text-3xl animate-pulse-soft">{STATUS_ICONS[order.status]}</span>
+              <div className="min-w-0">
+                <h2 className="font-display text-xl font-bold text-ink-900 truncate">
+                  {STATUS_LABELS[order.status]}
+                </h2>
+                <p className="text-xs text-ink-600">Placed on {placedAt}</p>
+              </div>
+            </div>
           </div>
+          {eta && order.status !== 'delivered' && (
+            <div className="flex-shrink-0 text-right rounded-2xl bg-white px-4 py-2 border border-ink-100 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wider text-ink-500 font-bold">Arriving in</p>
+              <p className="font-display text-lg font-extrabold text-brand-600 leading-tight">{eta.label}</p>
+            </div>
+          )}
         </div>
       </div>
 
