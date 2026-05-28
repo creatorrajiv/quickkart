@@ -1,19 +1,15 @@
 /**
- * ProductCard — v2 Swiggy/Zomato-style card
+ * ProductCard — v3 with gallery support
  * ──────────────────────────────────────────────────────────────────────────
- * Image-forward, large rounded card with overlap ADD button.
- *
- * Two visual states (same as v1):
- *   • Not in cart → big "ADD" button
- *   • In cart     → quantity stepper
- *
- * Additions:
- *   • Discount-style price (strike-through if compare_at_price set; future)
- *   • Hover lift effect
- *   • Larger product image (4:3) and stronger typography
+ *  • Reads product.image_urls (array) when present, falls back to image_url
+ *  • Tap the image → opens a full-screen gallery carousel
+ *  • Counter chip in top-right shows total image count when > 1
+ *  • i18n via useTranslation
  */
 
+import { useState } from 'react';
 import { formatPrice } from '../../config/business';
+import { useTranslation } from '../../i18n/I18nProvider';
 
 const CATEGORY_EMOJI = {
   grocery: '🥦',
@@ -29,11 +25,11 @@ export default function ProductCard({
   onIncrement,
   onDecrement,
 }) {
+  const { t } = useTranslation();
   const inCart = quantityInCart > 0;
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
-  // `product.category` is the joined product_categories row (object) for new
-  // products and a legacy enum string for un-migrated rows. Normalise here so
-  // the JSX below renders text either way.
+  // `product.category` may be the joined object or legacy enum string.
   const isCategoryObj = product.category && typeof product.category === 'object';
   const categorySlug  = isCategoryObj ? product.category.slug : product.category;
   const categoryLabel = isCategoryObj ? product.category.name : product.category;
@@ -41,14 +37,24 @@ export default function ProductCard({
     ? (product.category.icon || CATEGORY_EMOJI[product.category.slug] || '📦')
     : (CATEGORY_EMOJI[categorySlug] ?? '📦');
 
+  // Build the gallery list. Falls back to single image for legacy rows.
+  const gallery = Array.isArray(product.image_urls) && product.image_urls.length > 0
+    ? product.image_urls
+    : (product.image_url ? [product.image_url] : []);
+  const hasMultiple = gallery.length > 1;
+
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl bg-white border border-ink-100 shadow-card hover:shadow-pop hover:-translate-y-0.5 transition-all duration-200">
 
-      {/* Image — taller aspect for better visual punch */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-ink-50 to-ink-100">
-        {product.image_url ? (
+      {/* Image — tap to open gallery */}
+      <button
+        type="button"
+        onClick={() => gallery.length > 0 && setGalleryOpen(true)}
+        className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-ink-50 to-ink-100 cursor-zoom-in"
+      >
+        {gallery[0] ? (
           <img
-            src={product.image_url}
+            src={gallery[0]}
             alt={product.name}
             loading="lazy"
             className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -59,13 +65,21 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* Category chip */}
         {categoryLabel && (
           <span className="absolute top-2 left-2 rounded-full bg-white/95 backdrop-blur px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-700 shadow-sm">
             {categoryLabel}
           </span>
         )}
-      </div>
+
+        {hasMultiple && (
+          <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-ink-900/70 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 6h16v12H4V6z" />
+            </svg>
+            {gallery.length}
+          </span>
+        )}
+      </button>
 
       {/* Body */}
       <div className="flex flex-1 flex-col gap-2 p-3 pt-3">
@@ -99,10 +113,67 @@ export default function ProductCard({
               onClick={onAdd}
               className="rounded-xl bg-white border-2 border-brand-500 text-brand-600 font-bold text-xs tracking-wider px-4 h-9 hover:bg-brand-500 hover:text-white hover:shadow-brand active:scale-95 transition-all"
             >
-              ADD
+              {t('product.add')}
             </button>
           )}
         </div>
+      </div>
+
+      {galleryOpen && (
+        <ProductGallery
+          images={gallery}
+          name={product.name}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Gallery modal — fullscreen image carousel ────────────────────────────
+function ProductGallery({ images, name, onClose }) {
+  const [idx, setIdx] = useState(0);
+  const prev = () => setIdx(i => (i - 1 + images.length) % images.length);
+  const next = () => setIdx(i => (i + 1) % images.length);
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/85 backdrop-blur-sm p-4 animate-fade-in"
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/15 text-white hover:bg-white/25 flex items-center justify-center"
+        aria-label="Close"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div onClick={(e) => e.stopPropagation()} className="relative max-w-3xl w-full">
+        <img src={images[idx]} alt={`${name} ${idx + 1}/${images.length}`}
+          className="w-full max-h-[80vh] object-contain rounded-2xl bg-ink-800" />
+
+        {images.length > 1 && (
+          <>
+            <button onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 hover:bg-white text-ink-900 font-bold shadow-pop">‹</button>
+            <button onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 hover:bg-white text-ink-900 font-bold shadow-pop">›</button>
+
+            <div className="mt-3 flex justify-center gap-2">
+              {images.map((src, i) => (
+                <button key={i} onClick={() => setIdx(i)}
+                  className={`h-12 w-12 rounded-lg overflow-hidden border-2 transition-all ${i === idx ? 'border-brand-500 scale-110' : 'border-white/30 opacity-70'}`}>
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <p className="mt-3 text-center text-white text-sm font-bold">{name}</p>
       </div>
     </div>
   );

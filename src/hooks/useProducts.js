@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+// The * grabs all columns including image_urls/image_paths added in migration 016.
 const SELECT_QUERY = `
   *,
   category:product_categories!products_category_id_fkey ( id, name, slug, icon )

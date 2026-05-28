@@ -15,7 +15,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { AdminShell } from '../../components/admin';
 import {
-  fetchAllProducts, uploadProductImage, deleteProductImage,
+  fetchAllProducts, uploadProductImage, uploadProductImages,
+  deleteProductImage, deleteProductImages,
   createProduct, updateProduct, deleteProduct,
 } from '../../services/productsService';
 import { fetchAllCategories } from '../../services/categoriesService';
@@ -50,24 +51,35 @@ export default function ProductsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleSave = async (form, file) => {
+  const handleSave = async (form, newFiles, retainedUrls, retainedPaths) => {
     let payload = { ...form };
 
-    // Upload image if a new file was picked
-    if (file) {
-      const { url, path, error } = await uploadProductImage(file);
+    // Upload any newly-added files
+    let uploadedUrls = [];
+    let uploadedPaths = [];
+    if (newFiles?.length) {
+      const { urls, paths, error } = await uploadProductImages(newFiles);
       if (error) { notify.error('Image upload failed', error.message); return false; }
-      payload.image_url  = url;
-      payload.image_path = path;
+      uploadedUrls = urls;
+      uploadedPaths = paths;
     }
 
+    const finalUrls  = [...(retainedUrls  ?? []), ...uploadedUrls];
+    const finalPaths = [...(retainedPaths ?? []), ...uploadedPaths];
+
+    payload.image_urls  = finalUrls;
+    payload.image_paths = finalPaths;
+    payload.image_url   = finalUrls[0]   ?? null;   // primary
+    payload.image_path  = finalPaths[0]  ?? null;
+
     const op = editing ? updateProduct(editing.id, payload) : createProduct(payload);
-    const { data, error } = await op;
+    const { error } = await op;
     if (error) { notify.error('Save failed', error.message); return false; }
 
-    // Best-effort: delete old image file if it was replaced
-    if (editing && file && editing.image_path) {
-      await deleteProductImage(editing.image_path);
+    // Clean up storage files that were removed during edit
+    if (editing) {
+      const removed = (editing.image_paths ?? []).filter(p => !finalPaths.includes(p));
+      if (removed.length) await deleteProductImages(removed);
     }
 
     notify.success(editing ? 'Product updated' : 'Product added');
@@ -88,7 +100,9 @@ export default function ProductsPage() {
   const handleDelete = async (p) => {
     if (!window.confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
     setActing(p.id);
-    if (p.image_path) await deleteProductImage(p.image_path);
+    // Delete all gallery files + fall back to primary
+    const allPaths = (p.image_paths?.length ? p.image_paths : (p.image_path ? [p.image_path] : []));
+    if (allPaths.length) await deleteProductImages(allPaths);
     const { error } = await deleteProduct(p.id);
     setActing(null);
     if (error) { notify.error('Delete failed', error.message); return; }
@@ -279,9 +293,13 @@ function ProductModal({ initial, categories, onClose, onSave }) {
     category_id:  initial?.category_id  ?? (categories[0]?.id ?? ''),
     is_available: initial?.is_available ?? true,
   });
-  const [file,    setFile]    = useState(null);
-  const [preview, setPreview] = useState(initial?.image_url ?? null);
-  const [saving,  setSaving]  = useState(false);
+
+  // Image gallery state — separated into "kept" (existing) vs "new" (just-picked) files
+  const [keptUrls,  setKeptUrls]  = useState(initial?.image_urls?.length  ? initial.image_urls  : (initial?.image_url  ? [initial.image_url]  : []));
+  const [keptPaths, setKeptPaths] = useState(initial?.image_paths?.length ? initial.image_paths : (initial?.image_path ? [initial.image_path] : []));
+  const [newFiles,    setNewFiles]    = useState([]);   // File[]
+  const [newPreviews, setNewPreviews] = useState([]);   // dataURL[]
+  const [saving, setSaving] = useState(false);
 
   const update = (k) => (e) => {
     const v = e.target.type === 'checkbox' ? e.target.checked
@@ -290,21 +308,53 @@ function ProductModal({ initial, categories, onClose, onSave }) {
     setForm(f => ({ ...f, [k]: v }));
   };
 
+  const totalImages = keptUrls.length + newFiles.length;
+  const MAX_IMAGES = 5;
+
   const handleFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith('image/')) { notify.error('Pick an image file'); return; }
-    if (f.size > 5 * 1024 * 1024)    { notify.error('Image must be under 5 MB'); return; }
-    setFile(f);
-    const r = new FileReader();
-    r.onload = () => setPreview(r.result);
-    r.readAsDataURL(f);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const room = MAX_IMAGES - totalImages;
+    if (room <= 0) { notify.error(`Max ${MAX_IMAGES} images`); return; }
+    const toAdd = files.slice(0, room);
+    for (const f of toAdd) {
+      if (!f.type.startsWith('image/'))      { notify.error('Pick image files only'); continue; }
+      if (f.size > 5 * 1024 * 1024)          { notify.error(`${f.name} is over 5 MB`); continue; }
+    }
+    const valid = toAdd.filter(f => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+    setNewFiles(prev => [...prev, ...valid]);
+    valid.forEach(f => {
+      const r = new FileReader();
+      r.onload = () => setNewPreviews(prev => [...prev, r.result]);
+      r.readAsDataURL(f);
+    });
+    // Reset input so same file can be re-picked
+    e.target.value = '';
+  };
+
+  const removeKept = (idx) => {
+    setKeptUrls(prev => prev.filter((_, i) => i !== idx));
+    setKeptPaths(prev => prev.filter((_, i) => i !== idx));
+  };
+  const removeNew = (idx) => {
+    setNewFiles(prev => prev.filter((_, i) => i !== idx));
+    setNewPreviews(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const moveKept = (from, to) => {
+    if (to < 0 || to >= keptUrls.length) return;
+    const u = [...keptUrls];
+    const p = [...keptPaths];
+    [u[from], u[to]] = [u[to], u[from]];
+    [p[from], p[to]] = [p[to], p[from]];
+    setKeptUrls(u); setKeptPaths(p);
   };
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim())   { notify.error('Name is required'); return; }
     if (!form.category_id)   { notify.error('Pick a category'); return; }
+    if (totalImages === 0)   { notify.error('Add at least one image'); return; }
     const priceNum = Number(form.price);
     if (!Number.isFinite(priceNum) || priceNum < 0) { notify.error('Invalid price'); return; }
 
@@ -315,9 +365,8 @@ function ProductModal({ initial, categories, onClose, onSave }) {
       price:        priceNum,
       category_id:  form.category_id,
       is_available: form.is_available,
-      // Keep legacy enum column in sync (so old code reading p.category still works)
       category:     categories.find(c => c.id === form.category_id)?.slug ?? null,
-    }, file);
+    }, newFiles, keptUrls, keptPaths);
     if (!ok) setSaving(false);
   };
 
@@ -325,22 +374,45 @@ function ProductModal({ initial, categories, onClose, onSave }) {
     <Modal open onClose={onClose} title={isEdit ? 'Edit product' : 'Add product'} size="lg">
       <form onSubmit={submit} className="px-5 py-4 space-y-4">
 
-        {/* Image picker */}
-        <Field label="Image" hint="PNG / JPG up to 5 MB. Square recommended.">
-          <div className="rounded-2xl border-2 border-dashed border-ink-200 overflow-hidden bg-ink-50">
-            {preview ? (
-              <div className="relative">
-                <img src={preview} alt="preview" className="w-full aspect-square object-cover max-h-72" />
-                <label className="absolute inset-0 bg-ink-900/40 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
-                  <span className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-ink-900 shadow-pop">Change image</span>
-                  <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
-                </label>
+        {/* Image gallery picker */}
+        <Field label={`Images (${totalImages}/${MAX_IMAGES})`} hint="Up to 5 images. First image is the primary (shown in product cards). Drag the arrows to reorder.">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+            {/* Existing kept images */}
+            {keptUrls.map((url, idx) => (
+              <div key={`k-${url}`} className="relative aspect-square overflow-hidden rounded-xl border-2 border-ink-100 bg-ink-50 group">
+                <img src={url} alt="" className="h-full w-full object-cover" />
+                {idx === 0 && (
+                  <span className="absolute top-1 left-1 rounded-md bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 uppercase tracking-wider shadow">Primary</span>
+                )}
+                <div className="absolute inset-0 flex flex-col justify-between p-1 opacity-0 group-hover:opacity-100 bg-ink-900/40 transition-opacity">
+                  <div className="flex justify-end">
+                    <button type="button" onClick={() => removeKept(idx)}
+                      className="h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 shadow">×</button>
+                  </div>
+                  <div className="flex justify-between">
+                    <button type="button" disabled={idx === 0} onClick={() => moveKept(idx, idx - 1)}
+                      className="h-6 w-6 rounded-full bg-white text-ink-700 text-xs hover:bg-ink-100 disabled:opacity-40 shadow">←</button>
+                    <button type="button" disabled={idx === keptUrls.length - 1} onClick={() => moveKept(idx, idx + 1)}
+                      className="h-6 w-6 rounded-full bg-white text-ink-700 text-xs hover:bg-ink-100 disabled:opacity-40 shadow">→</button>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <label className="flex aspect-square max-h-48 w-full flex-col items-center justify-center cursor-pointer text-ink-500 hover:bg-ink-100 transition">
-                <span className="text-5xl mb-2">📷</span>
-                <span className="text-sm font-bold">Click to upload</span>
-                <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+            ))}
+            {/* Newly-picked previews */}
+            {newPreviews.map((src, idx) => (
+              <div key={`n-${idx}`} className="relative aspect-square overflow-hidden rounded-xl border-2 border-brand-200 bg-brand-50 group">
+                <img src={src} alt="" className="h-full w-full object-cover" />
+                <span className="absolute top-1 left-1 rounded-md bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 uppercase tracking-wider shadow">New</span>
+                <button type="button" onClick={() => removeNew(idx)}
+                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 shadow">×</button>
+              </div>
+            ))}
+            {/* Add tile */}
+            {totalImages < MAX_IMAGES && (
+              <label className="aspect-square rounded-xl border-2 border-dashed border-ink-300 bg-white flex flex-col items-center justify-center cursor-pointer text-ink-500 hover:border-brand-400 hover:bg-brand-50 transition-all">
+                <span className="text-3xl mb-1">📷</span>
+                <span className="text-[11px] font-bold">Add</span>
+                <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
               </label>
             )}
           </div>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster }         from 'sonner';
 import { AuthProvider }    from './context/AuthContext';
 import { CartProvider }    from './context/CartProvider';
+import { I18nProvider }    from './i18n/I18nProvider';
 
 import { RoleRouter }      from './components/layout';
 
@@ -50,6 +51,7 @@ import {
 export default function App() {
   return (
     <ErrorBoundary>
+    <I18nProvider>
     <AuthProvider>
       <CartProvider>
         {/* Sonner toasts — see lib/notify.js for the helpers that fire these. */}
@@ -109,6 +111,7 @@ export default function App() {
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>
+    </I18nProvider>
     </ErrorBoundary>
   );
 }

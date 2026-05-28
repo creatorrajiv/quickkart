@@ -8,15 +8,17 @@
 
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-
-const TABS = [
-  { to: '/shop',     label: 'Home',    icon: HomeIcon },
-  { to: '/orders',   label: 'Orders',  icon: BagIcon  },
-  { to: '/profile',  label: 'Profile', icon: UserIcon },
-];
+import { useTranslation } from '../../i18n/I18nProvider';
 
 export default function BottomNav() {
   const { signOut } = useAuth();
+  const { t } = useTranslation();
+
+  const TABS = [
+    { to: '/shop',    label: t('common.home'),    icon: HomeIcon },
+    { to: '/orders',  label: t('common.orders'),  icon: BagIcon  },
+    { to: '/profile', label: t('common.profile'), icon: UserIcon },
+  ];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 sm:hidden bg-white/95 backdrop-blur border-t border-ink-100 pb-[env(safe-area-inset-bottom)]">
@@ -42,7 +44,7 @@ export default function BottomNav() {
         <li>
           <button onClick={signOut}
             className="w-full flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-semibold text-ink-500 active:text-brand-500">
-            <ExitIcon /> <span>Exit</span>
+            <ExitIcon /> <span>{t('nav.exit')}</span>
           </button>
         </li>
       </ul>

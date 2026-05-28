@@ -39,6 +39,33 @@ export async function deleteProductImage(path) {
   return { error };
 }
 
+/**
+ * Upload multiple images in sequence. Returns parallel arrays of public
+ * URLs and storage paths so the caller can save both on the product.
+ *
+ * @param {File[]} files
+ * @returns {Promise<{ urls: string[], paths: string[], error: Error|null }>}
+ */
+export async function uploadProductImages(files) {
+  const urls = [];
+  const paths = [];
+  for (const file of files) {
+    const { url, path, error } = await uploadProductImage(file);
+    if (error) return { urls, paths, error };
+    urls.push(url);
+    paths.push(path);
+  }
+  return { urls, paths, error: null };
+}
+
+/** Bulk delete a list of paths (e.g. when a product is removed). */
+export async function deleteProductImages(paths) {
+  const list = (paths ?? []).filter(Boolean);
+  if (list.length === 0) return { error: null };
+  const { error } = await supabase.storage.from('products').remove(list);
+  return { error };
+}
+
 export async function createProduct(input) {
   const { data, error } = await supabase
     .from('products')

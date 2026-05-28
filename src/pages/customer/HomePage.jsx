@@ -23,6 +23,7 @@ import { useAuth }           from '../../context/AuthContext';
 import { NotificationBell }  from '../../components/common';
 import { fetchActiveBanners } from '../../services/bannersService';
 import { fetchActiveCategories } from '../../services/categoriesService';
+import { useTranslation } from '../../i18n/I18nProvider';
 
 import {
   ProductCard,
@@ -33,11 +34,12 @@ import {
   BannerCarousel,
 } from '../../components/customer';
 
-const ALL_CATEGORY = { key: 'all', label: 'All', emoji: '🛒' };
 
 export default function CustomerHomePage() {
   const navigate = useNavigate();
   const { session, profile, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
+  const ALL_CATEGORY = { key: 'all', label: t('cat.all'), emoji: '🛒' };
 
   const [category, setCategory] = useState('all');
   const [search,   setSearch]   = useState('');
@@ -98,9 +100,9 @@ export default function CustomerHomePage() {
 
         <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 relative">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wider text-white/85 font-semibold">Delivering to</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/85 font-semibold">{t('greeting.deliveringTo')}</p>
             <h1 className="font-display text-lg sm:text-xl font-bold text-white truncate flex items-center gap-1.5">
-              Hi, {profile?.full_name?.split(' ')[0] || profile?.email?.split('@')[0] || 'there'} 👋
+              {t('greeting.hi', { name: profile?.full_name?.split(' ')[0] || profile?.email?.split('@')[0] || 'there' })} 👋
             </h1>
           </div>
 
@@ -110,11 +112,11 @@ export default function CustomerHomePage() {
             </div>
             <button onClick={() => navigate('/profile')}
               className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-white/15 border border-white/20 px-3 h-9 text-xs font-semibold text-white hover:bg-white/25 transition-all">
-              Profile
+              {t('common.profile')}
             </button>
             <button onClick={() => navigate('/orders')}
               className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-white/15 border border-white/20 px-3 h-9 text-xs font-semibold text-white hover:bg-white/25 transition-all">
-              My Orders
+              {t('orders.title')}
             </button>
           </div>
         </div>
@@ -125,7 +127,7 @@ export default function CustomerHomePage() {
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search for groceries, meals, eggs…"
+          placeholder={t('shop.searchPlaceholder')}
         />
       </div>
 
@@ -136,7 +138,7 @@ export default function CustomerHomePage() {
 
         {/* Category tiles */}
         <section>
-          <h2 className="mb-3 font-display text-base font-bold text-ink-900 px-1">Shop by category</h2>
+          <h2 className="mb-3 font-display text-base font-bold text-ink-900 px-1">{t('shop.shopBy')}</h2>
           <CategoryTabs categories={CATEGORIES} active={category} onChange={setCategory} />
         </section>
 
@@ -151,10 +153,12 @@ export default function CustomerHomePage() {
         <section>
           <div className="mb-3 flex items-center justify-between px-1">
             <h2 className="font-display text-base font-bold text-ink-900">
-              {search ? `Results for "${search}"` : (category === 'all' ? "What's in store" : `${CATEGORIES.find(c => c.key === category)?.label ?? ''}`)}
+              {search ? t('shop.results', { query: search }) : (category === 'all' ? t('shop.whatsInStore') : (CATEGORIES.find(c => c.key === category)?.label ?? ''))}
             </h2>
             {!loading && products.length > 0 && (
-              <span className="text-xs text-ink-500">{products.length} item{products.length === 1 ? '' : 's'}</span>
+              <span className="text-xs text-ink-500">
+                {products.length === 1 ? t('shop.itemCount', { count: 1 }) : t('shop.itemsCount', { count: products.length })}
+              </span>
             )}
           </div>
 

@@ -27,6 +27,8 @@ import {
 import { NotificationBell } from '../../components/common';
 import { isPushSupported, getPermission, subscribeToPush, unsubscribeFromPush } from '../../lib/push';
 import { notify } from '../../lib/notify';
+import { useTranslation } from '../../i18n/I18nProvider';
+import { LANGUAGES } from '../../i18n/translations';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -71,6 +73,7 @@ export default function ProfilePage() {
 
       <main className="mx-auto max-w-3xl space-y-5 px-4 py-5 sm:px-6">
         <AccountSection profile={profile} onSave={updateProfile} />
+        <LanguageSection />
         <PasswordSection />
         <NotificationsSection userId={profile.id} />
         {profile.role === 'customer' && <AddressBookSection userId={profile.id} />}
@@ -150,6 +153,46 @@ function PasswordSection() {
           <button type="submit" disabled={saving} className={PRIMARY_BTN}>{saving ? 'Updating…' : 'Update password'}</button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+// ─── Language toggle ───────────────────────────────────────────────────────
+function LanguageSection() {
+  const { lang, setLang, t } = useTranslation();
+  return (
+    <Card title={t('profile.language')}>
+      <div className="grid grid-cols-2 gap-3">
+        {LANGUAGES.map(l => {
+          const active = lang === l.code;
+          return (
+            <button
+              key={l.code}
+              onClick={() => setLang(l.code)}
+              className={`relative flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-all active:scale-[0.99]
+                ${active
+                  ? 'border-brand-500 bg-brand-50 shadow-brand'
+                  : 'border-ink-100 bg-white hover:border-brand-200'
+                }`}
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                {l.code === 'hi' ? 'अ' : 'A'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-ink-900">{l.native}</p>
+                <p className="text-xs text-ink-500">{l.label}</p>
+              </div>
+              {active && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </Card>
   );
 }
