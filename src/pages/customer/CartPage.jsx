@@ -24,6 +24,8 @@ import { calculateOrderTotals,
 import { notify }                       from '../../lib/notify';
 import { openWhatsAppOrder, isWhatsAppShareEnabled } from '../../lib/whatsapp';
 import { validateCoupon }               from '../../services/couponsService';
+import { fetchMyLoyalty }                from '../../services/loyaltyService';
+import { LOYALTY, maxRedeemablePoints }  from '../../config/business';
 import { Input } from '../../ui';
 
 import {
@@ -59,13 +61,43 @@ export default function CartPage() {
   // Delivery slot
   const [slot, setSlot] = useState({ value: null, label: 'ASAP' });
 
+  // Loyalty redemption
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0);
+  const [redeemPoints,   setRedeemPoints]   = useState(0);
+
+  // Load balance when cart mounts
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await fetchMyLoyalty();
+      if (cancelled || !data) return;
+      setLoyaltyBalance(data.loyalty_points ?? 0);
+    })();
+    return () => { cancelled = true; };
+  }, [session]);
+
   const totalsBefore = useMemo(() => calculateOrderTotals(subtotal), [subtotal]);
   const discount     = couponApplied?.discount_amount ?? 0;
-  const totals       = useMemo(() => ({
+
+  // Loyalty: cap = min(balance, 20% of subtotal after coupon)
+  const maxRedeem = useMemo(() => Math.min(
+    loyaltyBalance,
+    maxRedeemablePoints(Math.max(0, subtotal - discount)),
+  ), [loyaltyBalance, subtotal, discount]);
+
+  // Clamp redeem points whenever max changes
+  useEffect(() => {
+    if (redeemPoints > maxRedeem) setRedeemPoints(maxRedeem);
+  }, [maxRedeem, redeemPoints]);
+
+  const loyaltyDiscount = Math.min(redeemPoints * LOYALTY.redeemValuePerPoint, subtotal);
+  const totals = useMemo(() => ({
     ...totalsBefore,
     discount,
-    total: Math.max(0, Math.round((totalsBefore.total - discount) * 100) / 100),
-  }), [totalsBefore, discount]);
+    loyaltyDiscount,
+    total: Math.max(0, Math.round((totalsBefore.total - discount - loyaltyDiscount) * 100) / 100),
+  }), [totalsBefore, discount, loyaltyDiscount]);
 
   const handleApplyCoupon = async () => {
     const code = couponInput.trim();
@@ -100,6 +132,7 @@ export default function CartPage() {
       couponCode: couponApplied?.code ?? null,
       deliverySlot:      slot.value,
       deliverySlotLabel: slot.label,
+      redeemPoints,
     });
     if (error) {
       setPlaceError(error.message ?? 'Could not place order.');
@@ -203,6 +236,45 @@ export default function CartPage() {
             </div>
           )}
         </section>
+
+        {/* Loyalty points redemption */}
+        {loyaltyBalance > 0 && (
+          <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-card">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display text-base font-bold text-ink-900">Use loyalty points</h3>
+              <span className="text-xs font-bold text-brand-600">{loyaltyBalance} available</span>
+            </div>
+
+            {maxRedeem === 0 ? (
+              <p className="text-xs text-ink-500">
+                Add items worth at least {formatPrice(5 / LOYALTY.maxRedeemPercentOfBill)} to redeem points.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxRedeem}
+                    step={1}
+                    value={redeemPoints}
+                    onChange={e => setRedeemPoints(Number(e.target.value))}
+                    className="flex-1 accent-brand-500"
+                  />
+                  <div className="text-right">
+                    <p className="font-display text-lg font-extrabold text-brand-600 leading-none">
+                      {redeemPoints} pts
+                    </p>
+                    <p className="text-[10px] text-ink-500">= {formatPrice(loyaltyDiscount)} off</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] text-ink-500">
+                  Max {maxRedeem} points on this order ({Math.round(LOYALTY.maxRedeemPercentOfBill * 100)}% cap)
+                </p>
+              </>
+            )}
+          </section>
+        )}
 
         <OrderSummary totals={totals} itemCount={count} />
 

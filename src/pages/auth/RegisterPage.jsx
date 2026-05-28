@@ -10,22 +10,28 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Link, useNavigate }   from 'react-router-dom';
+import { Link, useNavigate, useSearchParams }   from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 import { notify }  from '../../lib/notify';
 import AuthShell   from '../../components/auth/AuthShell';
 import { Button, Input, Field } from '../../ui';
+import { claimSignupBonus, applyReferralCode } from '../../services/loyaltyService';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { signUp, session, profile, loading: authLoading } = useAuth();
+
+  // Pre-fill from URL: /register?ref=ABC123
+  const initialRef = (params.get('ref') ?? '').toUpperCase().slice(0, 8);
 
   const [fullName, setFullName] = useState('');
   const [email,    setEmail]    = useState('');
   const [phone,    setPhone]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
+  const [refCode,  setRefCode]  = useState(initialRef);
   const [showPwd,  setShowPwd]  = useState(false);
 
   const [submitting,    setSubmitting]    = useState(false);
@@ -36,11 +42,23 @@ export default function RegisterPage() {
     if (authLoading) return;
     if (!session) return;
     if (awaitingEmail) return;
+
+    // Claim signup bonus + referral code asynchronously (don't block redirect)
+    (async () => {
+      try {
+        await claimSignupBonus();
+        if (refCode && refCode.trim().length > 0) {
+          const { data } = await applyReferralCode(refCode);
+          if (data?.ok) notify.success('🎁 +50 referral bonus', data.message);
+        }
+      } catch { /* silent — bonuses are best-effort */ }
+    })();
+
     if (profile?.role === 'admin')           navigate('/admin',                { replace: true });
     else if (profile?.role === 'agent')      navigate('/agent/active-orders',  { replace: true });
     else if (profile?.role === 'shopkeeper') navigate('/shopkeeper/dashboard', { replace: true });
     else                                     navigate('/shop',                 { replace: true });
-  }, [authLoading, session, profile, navigate, awaitingEmail]);
+  }, [authLoading, session, profile, navigate, awaitingEmail, refCode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,6 +170,16 @@ export default function RegisterPage() {
           />
         </Field>
 
+        <Field label="Referral code (optional)" hint="Got a friend's code? Enter it for +50 points 🎁">
+          <Input
+            value={refCode}
+            onChange={e => setRefCode(e.target.value.toUpperCase().slice(0, 8))}
+            placeholder="ABC123"
+            size="lg"
+            leftIcon={<GiftIcon />}
+          />
+        </Field>
+
         <Button type="submit" size="lg" fullWidth loading={submitting}>
           Create account
         </Button>
@@ -192,6 +220,13 @@ function PhoneIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 010 1.414L9.414 8.586a11.042 11.042 0 005.657 5.657l1.464-1.464a1 1 0 011.414 0l2.414 2.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </svg>
+  );
+}
+function GiftIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
     </svg>
   );
 }

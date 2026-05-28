@@ -95,6 +95,24 @@ export const getDeliveryETA = (status) => {
   return { ...eta, label: `${eta.min}-${eta.max} min` };
 };
 
+// ─── Loyalty & referrals ────────────────────────────────────────────────────
+/**
+ * Centralised rules — DB enforces the same numbers via RPCs in
+ * migration 023. Update both places when changing.
+ */
+export const LOYALTY = {
+  earnPerRupee:           1 / 20,   // 1 point per ₹20 spent on delivered orders
+  redeemValuePerPoint:    1,         // 1 point = ₹1 discount
+  maxRedeemPercentOfBill: 0.20,      // ≤ 20% of order can be paid with points
+  signupBonus:            25,        // first-time signup
+  referralBonusReferrer:  100,       // person whose code was used
+  referralBonusReferred:  50,        // new customer using the code
+};
+
+/** Compute the cap on how many points a customer can apply on a given subtotal. */
+export const maxRedeemablePoints = (subtotal) =>
+  Math.floor(subtotal * LOYALTY.maxRedeemPercentOfBill);
+
 // ─── Payment methods ─────────────────────────────────────────────────────────
 /**
  * Matches the payment_method enum in the database.

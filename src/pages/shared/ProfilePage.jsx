@@ -29,6 +29,8 @@ import { isPushSupported, getPermission, subscribeToPush, unsubscribeFromPush } 
 import { notify } from '../../lib/notify';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { LANGUAGES } from '../../i18n/translations';
+import { fetchMyLoyalty, fetchLoyaltyHistory } from '../../services/loyaltyService';
+import { formatPrice, LOYALTY } from '../../config/business';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -72,6 +74,7 @@ export default function ProfilePage() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-5 px-4 py-5 sm:px-6">
+        {profile.role === 'customer' && <LoyaltySection />}
         <AccountSection profile={profile} onSave={updateProfile} />
         <LanguageSection />
         <PasswordSection />
@@ -153,6 +156,129 @@ function PasswordSection() {
           <button type="submit" disabled={saving} className={PRIMARY_BTN}>{saving ? 'Updating…' : 'Update password'}</button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+// ─── Loyalty + referrals ───────────────────────────────────────────────────
+const TXN_LABELS = {
+  earn:             { label: 'Earned',           icon: '🎯', tone: 'text-green-600' },
+  redeem:           { label: 'Redeemed',         icon: '💸', tone: 'text-brand-600' },
+  signup_bonus:     { label: 'Welcome bonus',    icon: '🎁', tone: 'text-green-600' },
+  referral_reward:  { label: 'Referral reward',  icon: '🤝', tone: 'text-purple-600' },
+  admin_adjust:     { label: 'Adjustment',       icon: '⚙️', tone: 'text-ink-700' },
+};
+
+function LoyaltySection() {
+  const [loyalty,  setLoyalty]  = useState(null);
+  const [history,  setHistory]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [copied,   setCopied]   = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const [{ data: l }, { data: h }] = await Promise.all([
+      fetchMyLoyalty(),
+      fetchLoyaltyHistory(10),
+    ]);
+    setLoyalty(l ?? null);
+    setHistory(h ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const referralLink = loyalty?.referral_code
+    ? `${window.location.origin}/register?ref=${loyalty.referral_code}`
+    : '';
+
+  const copyCode = async () => {
+    if (!loyalty?.referral_code) return;
+    try {
+      await navigator.clipboard.writeText(loyalty.referral_code);
+      setCopied(true);
+      notify.success('Code copied');
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard not available */ }
+  };
+
+  const shareWhatsApp = () => {
+    const msg = `Hey! Order groceries on QuickKart — use my code *${loyalty.referral_code}* on signup and we both get bonus points 🎁\n\n${referralLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  };
+
+  if (loading) {
+    return (
+      <Card title="My QuickKart Wallet">
+        <div className="h-32 animate-pulse bg-ink-100 rounded-xl" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card title="My QuickKart Wallet">
+      {/* Balance hero */}
+      <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 p-5 text-white shadow-pop">
+        <p className="text-[11px] uppercase tracking-wider opacity-85 font-bold">Available points</p>
+        <p className="font-display text-4xl font-extrabold leading-none mt-1">
+          {loyalty?.loyalty_points ?? 0}
+        </p>
+        <p className="text-xs opacity-90 mt-1">
+          ≈ {formatPrice((loyalty?.loyalty_points ?? 0) * LOYALTY.redeemValuePerPoint)} off your next order
+        </p>
+        <p className="text-[10px] opacity-75 mt-2">
+          Earn 1 point per ₹{Math.round(1 / LOYALTY.earnPerRupee)} spent · 1 point = ₹1 off
+        </p>
+      </div>
+
+      {/* Referral code */}
+      {loyalty?.referral_code && (
+        <div className="mt-4 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50 p-4">
+          <p className="text-[11px] uppercase tracking-wider font-bold text-brand-700">Refer & earn</p>
+          <p className="text-xs text-ink-600 mt-0.5">
+            Friend uses your code → they get <strong>50 pts</strong>, you get <strong>100 pts</strong>
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <code className="flex-1 rounded-xl bg-white border border-ink-200 px-3 py-2.5 font-mono text-lg font-bold tracking-widest text-ink-900 text-center select-all">
+              {loyalty.referral_code}
+            </code>
+            <button onClick={copyCode}
+              className="rounded-xl bg-white border border-ink-200 px-3 h-11 text-xs font-bold text-ink-700 hover:bg-ink-50 active:scale-95">
+              {copied ? '✓' : 'Copy'}
+            </button>
+            <button onClick={shareWhatsApp}
+              className="rounded-xl bg-[#25D366] text-white px-3 h-11 text-xs font-bold hover:bg-[#1ebe57] active:scale-95">
+              WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      {history.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-500">Recent activity</p>
+          <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+            {history.map(t => {
+              const meta = TXN_LABELS[t.type] ?? TXN_LABELS.admin_adjust;
+              return (
+                <li key={t.id} className="flex items-center gap-3 rounded-xl bg-ink-50 px-3 py-2">
+                  <span className="text-lg">{meta.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-ink-900 truncate">{meta.label}</p>
+                    {t.reason && <p className="text-[11px] text-ink-500 truncate">{t.reason}</p>}
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${meta.tone}`}>
+                      {t.points > 0 ? '+' : ''}{t.points} pts
+                    </p>
+                    <p className="text-[10px] text-ink-500">{new Date(t.created_at).toLocaleDateString()}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </Card>
   );
 }

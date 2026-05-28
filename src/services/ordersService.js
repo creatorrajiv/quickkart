@@ -59,8 +59,9 @@ export async function placeOrder({
   paymentMethod,
   deliveryAddress,
   couponCode = null,
-  deliverySlot = null,        // ISO timestamp or null for ASAP
+  deliverySlot = null,
   deliverySlotLabel = null,
+  redeemPoints = 0,
 }) {
   // ── Local validation (fast fail) ────────────────────────────────────────
   if (!Array.isArray(items) || items.length === 0) {
@@ -93,6 +94,7 @@ export async function placeOrder({
     p_delivery_address: deliveryAddress.trim(),
     p_total_price:      totals.total,
     p_coupon_code:      couponCode ? couponCode.trim().toUpperCase() : null,
+    p_redeem_points:    Math.max(0, Math.floor(Number(redeemPoints) || 0)),
   });
 
   if (error) {

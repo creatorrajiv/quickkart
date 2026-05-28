@@ -8,7 +8,7 @@
 import { formatPrice, DELIVERY } from '../../config/business';
 
 export default function OrderSummary({ totals, itemCount }) {
-  const { subtotal, delivery, tax, total, discount = 0 } = totals;
+  const { subtotal, delivery, tax, total, discount = 0, loyaltyDiscount = 0 } = totals;
   const freeDeliveryGap = DELIVERY.freeDeliveryAbove - subtotal;
   const isFreeDelivery  = delivery === 0;
   const progress = Math.min(100, Math.round((subtotal / DELIVERY.freeDeliveryAbove) * 100));
@@ -43,6 +43,9 @@ export default function OrderSummary({ totals, itemCount }) {
         <Row label="Taxes & charges" value={formatPrice(tax)} />
         {discount > 0 && (
           <Row label="Coupon discount" value={`− ${formatPrice(discount)}`} valueClass="text-green-600 font-bold" />
+        )}
+        {loyaltyDiscount > 0 && (
+          <Row label="Loyalty points" value={`− ${formatPrice(loyaltyDiscount)}`} valueClass="text-brand-600 font-bold" />
         )}
       </div>
 
