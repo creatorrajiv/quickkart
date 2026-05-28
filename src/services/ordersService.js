@@ -85,6 +85,8 @@ export async function placeOrder({
     product_id:        i.productId,
     quantity:          i.quantity,
     price_at_purchase: i.price,
+    variant_id:        i.variantId    ?? null,
+    variant_label:     i.variantLabel ?? null,
   }));
 
   // ── Call the atomic RPC ─────────────────────────────────────────────────

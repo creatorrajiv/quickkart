@@ -32,10 +32,19 @@ export default function ProductCard({
   const { ids: wishIds, toggle: toggleWish, busy: wishBusy } = useWishlist();
   const inCart = quantityInCart > 0;
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [variantOpen, setVariantOpen] = useState(false);
 
   const isFav   = wishIds.has(product.id);
   const isWishBusy = wishBusy.has(product.id);
   const canWish = profile?.role === 'customer';
+
+  // Variants
+  const variants = Array.isArray(product.variants) ? product.variants.filter(v => v.is_available !== false) : [];
+  const hasVariants = variants.length > 0;
+  // Lowest variant price (shown as "from ₹X" on the card)
+  const minVariantPrice = hasVariants
+    ? Math.min(...variants.map(v => Number(v.price) || 0))
+    : null;
 
   // `product.category` may be the joined object or legacy enum string.
   const isCategoryObj = product.category && typeof product.category === 'object';
@@ -121,13 +130,23 @@ export default function ProductCard({
 
         <div className="flex items-center justify-between gap-2 pt-1">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-ink-400 leading-none mb-0.5">Price</p>
+            <p className="text-[10px] uppercase tracking-wide text-ink-400 leading-none mb-0.5">
+              {hasVariants ? 'From' : 'Price'}
+            </p>
             <span className="font-display text-lg font-bold text-ink-900 leading-none">
-              {formatPrice(product.price)}
+              {formatPrice(hasVariants ? minVariantPrice : product.price)}
             </span>
           </div>
 
-          {inCart ? (
+          {hasVariants ? (
+            // Variant products always show ADD — picker opens
+            <button
+              onClick={() => setVariantOpen(true)}
+              className="rounded-xl bg-white border-2 border-brand-500 text-brand-600 font-bold text-xs tracking-wider px-3 h-9 hover:bg-brand-500 hover:text-white hover:shadow-brand active:scale-95 transition-all"
+            >
+              {variants.length} OPTIONS
+            </button>
+          ) : inCart ? (
             <QuantityStepper
               quantity={quantityInCart}
               onIncrement={onIncrement}
@@ -144,6 +163,18 @@ export default function ProductCard({
         </div>
       </div>
 
+      {variantOpen && (
+        <VariantPicker
+          product={product}
+          variants={variants}
+          onClose={() => setVariantOpen(false)}
+          onPicked={(variant) => {
+            onAdd?.({ variant });
+            setVariantOpen(false);
+          }}
+        />
+      )}
+
       {galleryOpen && (
         <ProductGallery
           images={gallery}
@@ -151,6 +182,43 @@ export default function ProductCard({
           onClose={() => setGalleryOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Variant picker modal ─────────────────────────────────────────────────
+function VariantPicker({ product, variants, onClose, onPicked }) {
+  const sorted = [...variants].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return (
+    <div onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-900/60 backdrop-blur-sm p-4 animate-fade-in">
+      <div onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-pop animate-slide-up overflow-hidden">
+        <div className="p-5 border-b border-ink-100">
+          <h3 className="font-display text-lg font-bold text-ink-900">{product.name}</h3>
+          <p className="text-xs text-ink-500 mt-0.5">Choose an option</p>
+        </div>
+        <ul className="max-h-96 overflow-y-auto p-2">
+          {sorted.map(v => (
+            <li key={v.id}>
+              <button
+                onClick={() => onPicked(v)}
+                className="w-full flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-left hover:bg-brand-50 active:scale-[0.99] transition-all"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-ink-900">{v.label}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-base font-extrabold text-ink-900">
+                    ₹{Number(v.price).toFixed(2)}
+                  </span>
+                  <span className="rounded-xl bg-brand-500 text-white font-bold text-xs px-3 py-1.5">ADD</span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

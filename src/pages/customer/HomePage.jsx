@@ -78,14 +78,20 @@ export default function CustomerHomePage() {
   const { products, loading, error } = useProducts({ category, search });
   const { count, subtotal, addItem, updateQuantity, getQuantity } = useCart();
 
-  const handleAdd = (product) => addItem({
-    productId: product.id,
-    name:      product.name,
-    price:     product.price,
-    image_url: product.image_url,
-    // Store the slug string (not the joined object) so the cart stays serializable.
-    category:  product.category?.slug ?? product.category ?? null,
-  });
+  // handleAdd now accepts an optional { variant } arg from the variant picker.
+  // For non-variant products, called as handleAdd(product) — variant is undefined.
+  const handleAdd = (product, opts = {}) => {
+    const variant = opts.variant ?? null;
+    addItem({
+      productId:    product.id,
+      variantId:    variant?.id     ?? null,
+      variantLabel: variant?.label  ?? null,
+      name:         product.name,
+      price:        variant ? Number(variant.price) : product.price,
+      image_url:    product.image_url,
+      category:     product.category?.slug ?? product.category ?? null,
+    });
+  };
   const handleIncrement = (p) => updateQuantity(p.id, getQuantity(p.id) + 1);
   const handleDecrement = (p) => updateQuantity(p.id, getQuantity(p.id) - 1);
 
@@ -169,7 +175,7 @@ export default function CustomerHomePage() {
                   key={p.id}
                   product={p}
                   quantityInCart={getQuantity(p.id)}
-                  onAdd={() => handleAdd(p)}
+                  onAdd={(opts) => handleAdd(p, opts)}
                   onIncrement={() => handleIncrement(p)}
                   onDecrement={() => handleDecrement(p)}
                 />

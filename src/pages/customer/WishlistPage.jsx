@@ -43,10 +43,18 @@ export default function WishlistPage() {
   useEffect(() => { if (session) load(); }, [session]);
 
   // Cart helpers
-  const handleAdd = (p) => addItem({
-    productId: p.id, name: p.name, price: p.price,
-    image_url: p.image_url, category: p.category?.slug ?? null,
-  });
+  const handleAdd = (p, opts = {}) => {
+    const variant = opts.variant ?? null;
+    addItem({
+      productId:    p.id,
+      variantId:    variant?.id    ?? null,
+      variantLabel: variant?.label ?? null,
+      name:         p.name,
+      price:        variant ? Number(variant.price) : p.price,
+      image_url:    p.image_url,
+      category:     p.category?.slug ?? null,
+    });
+  };
   const handleInc = (p) => updateQuantity(p.id, getQuantity(p.id) + 1);
   const handleDec = (p) => updateQuantity(p.id, getQuantity(p.id) - 1);
 
@@ -97,7 +105,7 @@ export default function WishlistPage() {
                 key={p.id}
                 product={p}
                 quantityInCart={getQuantity(p.id)}
-                onAdd={() => handleAdd(p)}
+                onAdd={(opts) => handleAdd(p, opts)}
                 onIncrement={() => handleInc(p)}
                 onDecrement={() => handleDec(p)}
               />

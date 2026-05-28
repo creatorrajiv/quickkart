@@ -154,7 +154,12 @@ export default function OrderDetailPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-ink-900 truncate">{item.products?.name ?? 'Product'}</p>
-                  <p className="text-xs text-ink-500">{formatPrice(item.price_at_purchase)} × {item.quantity}</p>
+                  {item.variant_label && (
+                    <span className="inline-block mt-0.5 rounded-md bg-brand-100 text-brand-700 text-[10px] font-bold px-1.5 py-0.5 uppercase tracking-wide">
+                      {item.variant_label}
+                    </span>
+                  )}
+                  <p className="text-xs text-ink-500 mt-0.5">{formatPrice(item.price_at_purchase)} × {item.quantity}</p>
                 </div>
                 <p className="font-display text-base font-bold text-ink-900">
                   {formatPrice(Number(item.price_at_purchase) * item.quantity)}

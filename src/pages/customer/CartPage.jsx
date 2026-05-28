@@ -186,11 +186,11 @@ export default function CartPage() {
         <section className="space-y-2.5">
           {items.map(item => (
             <CartLineItem
-              key={item.productId}
+              key={item.cartKey ?? item.productId}
               item={item}
-              onIncrement={() => updateQuantity(item.productId, item.quantity + 1)}
-              onDecrement={() => updateQuantity(item.productId, item.quantity - 1)}
-              onRemove={()    => removeItem(item.productId)}
+              onIncrement={() => updateQuantity(item.cartKey ?? item.productId, item.quantity + 1)}
+              onDecrement={() => updateQuantity(item.cartKey ?? item.productId, item.quantity - 1)}
+              onRemove={()    => removeItem(item.cartKey ?? item.productId)}
             />
           ))}
         </section>

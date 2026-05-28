@@ -31,6 +31,11 @@ export default function CartLineItem({ item, onIncrement, onDecrement, onRemove 
 
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-bold text-ink-900">{item.name}</p>
+        {item.variantLabel && (
+          <p className="inline-block mt-0.5 rounded-md bg-brand-100 text-brand-700 text-[10px] font-bold px-1.5 py-0.5 uppercase tracking-wide">
+            {item.variantLabel}
+          </p>
+        )}
         <p className="text-xs text-ink-500 mt-0.5">
           {formatPrice(item.price)} <span className="text-ink-300">·</span> {item.quantity} × unit
         </p>

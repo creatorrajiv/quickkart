@@ -30,6 +30,7 @@ import {
   cartReducer,
   cartInitialState,
   CART_ACTIONS,
+  deriveCartKey,
 } from '../store/cartStore';
 import { storage, STORAGE_KEYS } from '../lib/storage';
 
@@ -72,18 +73,25 @@ export function CartProvider({ children }) {
     dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: item });
   }, []);
 
-  const removeItem = useCallback((productId) => {
-    dispatch({ type: CART_ACTIONS.REMOVE_ITEM, payload: productId });
+  /**
+   * Remove a cart line. Accepts a cartKey, or a plain productId for
+   * legacy callers (which still works for non-variant products since
+   * cartKey === productId in that case).
+   */
+  const removeItem = useCallback((keyOrProductId) => {
+    dispatch({ type: CART_ACTIONS.REMOVE_ITEM, payload: keyOrProductId });
   }, []);
 
   /**
    * Set an exact quantity for a line item.
    * A quantity ≤ 0 removes the item.
+   * First arg accepts either a cartKey or a plain productId (same compat
+   * note as removeItem).
    */
-  const updateQuantity = useCallback((productId, quantity) => {
+  const updateQuantity = useCallback((keyOrProductId, quantity) => {
     dispatch({
       type:    CART_ACTIONS.UPDATE_QUANTITY,
-      payload: { productId, quantity },
+      payload: { cartKey: keyOrProductId, quantity },
     });
   }, []);
 
@@ -104,16 +112,28 @@ export function CartProvider({ children }) {
     return Math.round(raw * 100) / 100;
   }, [state.items]);
 
-  // O(1) lookups for ProductCard quantity controls
+  // O(1) lookups for ProductCard quantity controls. For non-variant
+  // products cartKey === productId so legacy callers keep working.
+  // For variant products, callers should pass the derived cartKey.
   const getQuantity = useCallback(
-    (productId) => state.items.find(i => i.productId === productId)?.quantity ?? 0,
+    (keyOrProductId) => {
+      const found = state.items.find(i =>
+        i.cartKey === keyOrProductId || i.productId === keyOrProductId
+      );
+      return found?.quantity ?? 0;
+    },
     [state.items]
   );
 
   const isInCart = useCallback(
-    (productId) => state.items.some(i => i.productId === productId),
+    (keyOrProductId) => state.items.some(i =>
+      i.cartKey === keyOrProductId || i.productId === keyOrProductId
+    ),
     [state.items]
   );
+
+  /** Expose the key derivation helper so callers can compute cartKey. */
+  const getCartKey = useCallback(deriveCartKey, []);
 
   // ── Final context value ───────────────────────────────────────────────────
   const value = useMemo(() => ({
@@ -131,10 +151,11 @@ export function CartProvider({ children }) {
     // Queries
     getQuantity,
     isInCart,
+    getCartKey,
   }), [
     state.items, count, subtotal,
     addItem, removeItem, updateQuantity, clearCart,
-    getQuantity, isInCart,
+    getQuantity, isInCart, getCartKey,
   ]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

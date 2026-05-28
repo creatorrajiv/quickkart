@@ -63,12 +63,15 @@ export function useReorder() {
       const product = item.products;
       if (!product || !product.is_available) { unavailable++; continue; }
       addItem({
-        productId: product.id,
-        name:      product.name,
-        price:     Number(product.price),
-        image_url: product.image_url,
-        category:  product.category?.slug ?? null,
-        quantity:  item.quantity,
+        productId:    product.id,
+        variantId:    item.variant_id    ?? null,
+        variantLabel: item.variant_label ?? null,
+        name:         product.name,
+        // Variant order_items already store the price snapshot from purchase time
+        price:        Number(item.price_at_purchase ?? product.price),
+        image_url:    product.image_url,
+        category:     product.category?.slug ?? null,
+        quantity:     item.quantity,
       });
       added++;
     }

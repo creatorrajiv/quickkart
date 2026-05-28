@@ -294,6 +294,25 @@ function ProductModal({ initial, categories, onClose, onSave }) {
     is_available: initial?.is_available ?? true,
   });
 
+  // Variants — array of { id, label, price, is_available, sort_order }
+  const [variants, setVariants] = useState(() => Array.isArray(initial?.variants) ? initial.variants : []);
+  const addVariant = () => setVariants(prev => [
+    ...prev,
+    { id: cryptoRandomId(), label: '', price: form.price || '', is_available: true, sort_order: prev.length },
+  ]);
+  const updateVariant = (idx, key, val) =>
+    setVariants(prev => prev.map((v, i) => i === idx ? { ...v, [key]: val } : v));
+  const removeVariant = (idx) => setVariants(prev => prev.filter((_, i) => i !== idx));
+  const moveVariant = (idx, dir) => {
+    setVariants(prev => {
+      const next = [...prev];
+      const swap = idx + dir;
+      if (swap < 0 || swap >= next.length) return prev;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next.map((v, i) => ({ ...v, sort_order: i }));
+    });
+  };
+
   // Image gallery state — separated into "kept" (existing) vs "new" (just-picked) files
   const [keptUrls,  setKeptUrls]  = useState(initial?.image_urls?.length  ? initial.image_urls  : (initial?.image_url  ? [initial.image_url]  : []));
   const [keptPaths, setKeptPaths] = useState(initial?.image_paths?.length ? initial.image_paths : (initial?.image_path ? [initial.image_path] : []));
@@ -358,6 +377,21 @@ function ProductModal({ initial, categories, onClose, onSave }) {
     const priceNum = Number(form.price);
     if (!Number.isFinite(priceNum) || priceNum < 0) { notify.error('Invalid price'); return; }
 
+    // Validate variants if any
+    const cleanVariants = variants
+      .filter(v => v.label?.trim() && Number(v.price) > 0)
+      .map((v, i) => ({
+        id: v.id || cryptoRandomId(),
+        label: v.label.trim(),
+        price: Number(v.price),
+        is_available: v.is_available !== false,
+        sort_order: i,
+      }));
+    if (variants.length > 0 && cleanVariants.length === 0) {
+      notify.error('Variant rows must have a label + price > 0');
+      return;
+    }
+
     setSaving(true);
     const ok = await onSave({
       name:         form.name.trim(),
@@ -366,9 +400,15 @@ function ProductModal({ initial, categories, onClose, onSave }) {
       category_id:  form.category_id,
       is_available: form.is_available,
       category:     categories.find(c => c.id === form.category_id)?.slug ?? null,
+      variants:     cleanVariants,
     }, newFiles, keptUrls, keptPaths);
     if (!ok) setSaving(false);
   };
+
+  // Tiny random id generator (variants only — not security-critical)
+  function cryptoRandomId() {
+    try { return crypto.randomUUID(); } catch { return Math.random().toString(36).slice(2); }
+  }
 
   return (
     <Modal open onClose={onClose} title={isEdit ? 'Edit product' : 'Add product'} size="lg">
@@ -443,6 +483,65 @@ function ProductModal({ initial, categories, onClose, onSave }) {
           <input type="checkbox" checked={form.is_available} onChange={update('is_available')} className="h-5 w-5 rounded text-brand-500" />
           In stock (uncheck to mark as Out of Stock)
         </label>
+
+        {/* ── Variants ────────────────────────────────────────── */}
+        <div className="rounded-2xl border-2 border-dashed border-ink-200 p-4 bg-ink-50">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h4 className="font-display text-sm font-bold text-ink-900">Variants (optional)</h4>
+              <p className="text-[11px] text-ink-500">Sizes, weights, packs — e.g. 500g · 1kg · 5kg</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={addVariant}>+ Add variant</Button>
+          </div>
+
+          {variants.length === 0 ? (
+            <p className="text-xs text-ink-500 mt-2">No variants. Customers add this product at the base price ({formatPrice(Number(form.price) || 0)}).</p>
+          ) : (
+            <ul className="space-y-2 mt-3">
+              {variants.map((v, i) => (
+                <li key={v.id || i} className="rounded-xl bg-white border border-ink-100 p-2 flex items-center gap-2">
+                  <Input
+                    placeholder="Label (e.g. 1 kg)"
+                    value={v.label}
+                    onChange={e => updateVariant(i, 'label', e.target.value)}
+                    className="flex-1"
+                    size="sm"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Price"
+                    value={v.price}
+                    onChange={e => updateVariant(i, 'price', e.target.value)}
+                    className="!w-24"
+                    size="sm"
+                    min="0"
+                    step="0.01"
+                  />
+                  <label className="flex items-center gap-1 text-[10px] font-bold text-ink-700">
+                    <input type="checkbox" checked={v.is_available !== false}
+                      onChange={e => updateVariant(i, 'is_available', e.target.checked)}
+                      className="h-4 w-4 rounded text-brand-500" />
+                    Stock
+                  </label>
+                  <div className="flex flex-col gap-0.5">
+                    <button type="button" onClick={() => moveVariant(i, -1)} disabled={i === 0}
+                      className="h-5 w-5 rounded text-ink-600 hover:bg-ink-100 disabled:opacity-30 text-xs">↑</button>
+                    <button type="button" onClick={() => moveVariant(i, +1)} disabled={i === variants.length - 1}
+                      className="h-5 w-5 rounded text-ink-600 hover:bg-ink-100 disabled:opacity-30 text-xs">↓</button>
+                  </div>
+                  <button type="button" onClick={() => removeVariant(i)}
+                    className="h-7 w-7 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold">×</button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {variants.length > 0 && (
+            <p className="mt-3 text-[11px] text-ink-500">
+              ⓘ When variants exist, the base price above is ignored. Customers must pick a variant.
+            </p>
+          )}
+        </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
