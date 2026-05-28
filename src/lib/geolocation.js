@@ -43,6 +43,31 @@ export function startWatching(onUpdate, onError, { highAccuracy = true } = {}) {
   return () => navigator.geolocation.clearWatch(watchId);
 }
 
+/**
+ * Reverse-geocode coordinates → human-readable address using Nominatim
+ * (free OpenStreetMap service, no API key, fair-use limit ~1 req/sec).
+ *
+ * For production scale we'd cache results / swap to a paid provider
+ * (OpenCage, Google Geocoding), but this is fine for hundreds of req/day.
+ *
+ * @returns {Promise<{ displayName: string, city: string, pincode: string, raw: object }>}
+ */
+export async function reverseGeocode({ lat, lng }) {
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+  if (!res.ok) throw new Error('Could not look up address from coordinates');
+  const data = await res.json();
+  const a = data.address ?? {};
+  return {
+    displayName: data.display_name ?? '',
+    city:        a.city || a.town || a.village || a.county || '',
+    state:       a.state ?? '',
+    pincode:     a.postcode ?? '',
+    country:     a.country ?? '',
+    raw:         data,
+  };
+}
+
 /** One-shot — useful for "where am I right now" buttons. */
 export function getCurrentPosition() {
   if (!isGeolocationSupported()) {

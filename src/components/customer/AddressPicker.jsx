@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import {
   fetchAddresses, createAddress, setDefaultAddress,
 } from '../../services/addressesService';
+import { getCurrentPosition, reverseGeocode } from '../../lib/geolocation';
 import { notify } from '../../lib/notify';
 import { Button, Input, Textarea, Field, Modal } from '../../ui';
 
@@ -142,7 +143,22 @@ function labelEmoji(label) {
 function NewAddressModal({ open, onClose, userId, onCreated }) {
   const [form, setForm] = useState({ label: '', address: '', phone: '', is_default: false });
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const update = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    try {
+      const { lat, lng } = await getCurrentPosition();
+      const { displayName } = await reverseGeocode({ lat, lng });
+      setForm(f => ({ ...f, address: displayName || `${lat}, ${lng}` }));
+      notify.success('Location captured', 'Review and edit before saving.');
+    } catch (err) {
+      notify.error('Could not get location', err.message || 'Please allow location access in your browser settings.');
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -160,7 +176,27 @@ function NewAddressModal({ open, onClose, userId, onCreated }) {
         <Field label="Label" required>
           <Input value={form.label} onChange={update('label')} required placeholder="Home, Office, Mom's place…" />
         </Field>
-        <Field label="Full address" required>
+
+        {/* GPS button */}
+        <button
+          type="button"
+          onClick={useCurrentLocation}
+          disabled={locating}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-brand-50 to-accent-50 border-2 border-dashed border-brand-300 px-3 h-12 text-sm font-bold text-brand-700 hover:bg-brand-100 active:scale-[0.98] disabled:opacity-60 transition-all"
+        >
+          {locating ? (
+            <>
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Finding your location…
+            </>
+          ) : (
+            <>
+              📍 Use my current location
+            </>
+          )}
+        </button>
+
+        <Field label="Full address" required hint="Edit anything inaccurate, especially the house/flat number.">
           <Textarea rows={3} value={form.address} onChange={update('address')} required placeholder="House no, street, area, city, PIN" />
         </Field>
         <Field label="Phone for this address" hint="Optional — used by delivery agent">

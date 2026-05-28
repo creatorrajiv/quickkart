@@ -54,7 +54,7 @@ import { calculateOrderTotals }  from '../config/business';
  * @param {PlaceOrderInput} input
  * @returns {Promise<PlaceOrderResult>}
  */
-export async function placeOrder({ items, paymentMethod, deliveryAddress }) {
+export async function placeOrder({ items, paymentMethod, deliveryAddress, couponCode = null }) {
   // ── Local validation (fast fail) ────────────────────────────────────────
   if (!Array.isArray(items) || items.length === 0) {
     return { orderId: null, totals: null, error: new Error('Your cart is empty.') };
@@ -85,6 +85,7 @@ export async function placeOrder({ items, paymentMethod, deliveryAddress }) {
     p_payment_method:   paymentMethod,
     p_delivery_address: deliveryAddress.trim(),
     p_total_price:      totals.total,
+    p_coupon_code:      couponCode ? couponCode.trim().toUpperCase() : null,
   });
 
   if (error) {

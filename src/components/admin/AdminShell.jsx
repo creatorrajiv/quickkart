@@ -29,6 +29,7 @@ const NAV_LINKS = [
   { to: '/admin/agents',       label: 'Agents',      icon: '🛵' },
   { to: '/admin/shopkeepers',  label: 'Shopkeepers', icon: '🧑‍🍳' },
   { to: '/admin/banners',      label: 'Banners',     icon: '🖼️' },
+  { to: '/admin/coupons',      label: 'Coupons',     icon: '🎟️' },
 ];
 
 export default function AdminShell({ title, subtitle, actions, children }) {

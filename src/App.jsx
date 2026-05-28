@@ -7,7 +7,7 @@ import { RoleRouter }      from './components/layout';
 
 import LoginPage           from './pages/auth/LoginPage';
 import RegisterPage        from './pages/auth/RegisterPage';
-import { ProductsPage, AdminOrdersPage, ShopsPage, AgentsPage, ShopkeepersPage, AdminDashboardPage, BannersPage, CategoriesPage } from './pages/admin';
+import { ProductsPage, AdminOrdersPage, ShopsPage, AgentsPage, ShopkeepersPage, AdminDashboardPage, BannersPage, CategoriesPage, CouponsPage } from './pages/admin';
 import ProfilePage  from './pages/shared/ProfilePage';
 import NotFoundPage from './pages/shared/NotFoundPage';
 import TermsPage    from './pages/shared/TermsPage';
@@ -84,6 +84,7 @@ export default function App() {
             <Route path="/admin"               element={<AdminDashboardPage />} />
             <Route path="/admin/banners"       element={<BannersPage />} />
             <Route path="/admin/categories"    element={<CategoriesPage />} />
+            <Route path="/admin/coupons"       element={<CouponsPage />} />
 
             {/* ── Shared (public legal pages + private profile) ── */}
             <Route path="/profile" element={<ProfilePage />} />

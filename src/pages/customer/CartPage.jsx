@@ -23,6 +23,8 @@ import { calculateOrderTotals,
          getDeliveryETA }               from '../../config/business';
 import { notify }                       from '../../lib/notify';
 import { openWhatsAppOrder, isWhatsAppShareEnabled } from '../../lib/whatsapp';
+import { validateCoupon }               from '../../services/couponsService';
+import { Input } from '../../ui';
 
 import {
   CartLineItem,
@@ -48,7 +50,37 @@ export default function CartPage() {
   const [placeError,    setPlaceError]    = useState(null);
   const [placedOrderId, setPlacedOrderId] = useState(null);
 
-  const totals = useMemo(() => calculateOrderTotals(subtotal), [subtotal]);
+  // Coupon state
+  const [couponInput,   setCouponInput]   = useState('');
+  const [couponApplied, setCouponApplied] = useState(null); // { code, discount_amount, message }
+  const [couponBusy,    setCouponBusy]    = useState(false);
+
+  const totalsBefore = useMemo(() => calculateOrderTotals(subtotal), [subtotal]);
+  const discount     = couponApplied?.discount_amount ?? 0;
+  const totals       = useMemo(() => ({
+    ...totalsBefore,
+    discount,
+    total: Math.max(0, Math.round((totalsBefore.total - discount) * 100) / 100),
+  }), [totalsBefore, discount]);
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    setCouponBusy(true);
+    const result = await validateCoupon(code, subtotal);
+    setCouponBusy(false);
+    if (!result.valid) {
+      notify.error('Coupon not applied', result.message);
+      return;
+    }
+    setCouponApplied(result);
+    notify.success(`${result.code} applied`, `You saved ${formatPrice(result.discount_amount)}!`);
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponApplied(null);
+    setCouponInput('');
+  };
 
   const handlePlaceOrder = async () => {
     if (placing) return;
@@ -59,7 +91,10 @@ export default function CartPage() {
     }
 
     setPlacing(true); setPlaceError(null);
-    const { orderId, error } = await placeOrder({ items, paymentMethod, deliveryAddress: address });
+    const { orderId, error } = await placeOrder({
+      items, paymentMethod, deliveryAddress: address,
+      couponCode: couponApplied?.code ?? null,
+    });
     if (error) {
       setPlaceError(error.message ?? 'Could not place order.');
       notify.error('Order failed', error.message);
@@ -126,6 +161,40 @@ export default function CartPage() {
         )}
 
         <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} />
+
+        {/* Coupon block */}
+        <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-card">
+          <h3 className="font-display text-base font-bold text-ink-900 mb-3">Promo code</h3>
+          {couponApplied ? (
+            <div className="rounded-xl bg-gradient-to-br from-green-50 to-accent-50 border border-green-200 p-3 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">🎟️</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-green-800">{couponApplied.code} applied</p>
+                <p className="text-xs text-green-700">You saved {formatPrice(couponApplied.discount_amount)}</p>
+              </div>
+              <button onClick={handleRemoveCoupon}
+                className="text-xs font-bold text-red-600 hover:underline">
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={couponInput}
+                onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                placeholder="Enter code (e.g. WELCOME50)"
+                className="flex-1 uppercase"
+              />
+              <button
+                onClick={handleApplyCoupon}
+                disabled={couponBusy || !couponInput.trim()}
+                className="rounded-xl bg-brand-500 text-white font-bold px-4 hover:bg-brand-600 active:scale-95 disabled:opacity-60 transition-all"
+              >
+                {couponBusy ? '…' : 'Apply'}
+              </button>
+            </div>
+          )}
+        </section>
 
         <OrderSummary totals={totals} itemCount={count} />
 
