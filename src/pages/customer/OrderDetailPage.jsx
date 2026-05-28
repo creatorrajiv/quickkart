@@ -92,8 +92,9 @@ export default function OrderDetailPage() {
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
+    const backTo = () => (window.history.length > 1 ? navigate(-1) : navigate('/orders'));
     return (
-      <Shell onBack={() => navigate('/orders')} title="Loading…">
+      <Shell onBack={backTo} title="Loading…">
         <div className="space-y-3">
           {[1,2,3].map(i => <div key={i} className="h-24 animate-pulse rounded-2xl bg-white border border-ink-100" />)}
         </div>
@@ -102,10 +103,11 @@ export default function OrderDetailPage() {
   }
 
   if (error || !order) {
+    const backTo = () => (window.history.length > 1 ? navigate(-1) : navigate('/orders'));
     return (
-      <Shell onBack={() => navigate('/orders')} title="Order">
+      <Shell onBack={backTo} title="Order">
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
-          {error?.message ?? 'Order not found.'}
+          {error?.message ?? 'Order not found or you do not have access.'}
         </div>
       </Shell>
     );
@@ -117,8 +119,14 @@ export default function OrderDetailPage() {
   });
   const cancelled = order.status === 'cancelled';
 
+  // Smart back: if there's history, go back; otherwise to /orders.
+  const handleBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else                            navigate('/orders');
+  };
+
   return (
-    <Shell onBack={() => navigate('/orders')} title={`#${shortId}`} subtitle={formatPrice(order.total_price)}>
+    <Shell onBack={handleBack} title={`#${shortId}`} subtitle={formatPrice(order.total_price)}>
       <div className="space-y-5">
 
         {/* ── Status hero with timeline ── */}

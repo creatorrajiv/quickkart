@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
+import { consumeIntendedUrl } from '../../hooks/useAuthGuard';
 import { notify }  from '../../lib/notify';
 import AuthShell   from '../../components/auth/AuthShell';
 import { Button, Input, Field } from '../../ui';
@@ -27,6 +28,10 @@ export default function LoginPage() {
   useEffect(() => {
     if (loading) return;
     if (!session) return;
+    // If the user got bounced to /login from a deep URL, take them back there.
+    const intended = consumeIntendedUrl();
+    if (intended) { navigate(intended, { replace: true }); return; }
+    // Otherwise, role-based default landing.
     if (profile?.role === 'admin')           navigate('/admin',                { replace: true });
     else if (profile?.role === 'agent')      navigate('/agent/active-orders',  { replace: true });
     else if (profile?.role === 'shopkeeper') navigate('/shopkeeper/dashboard', { replace: true });

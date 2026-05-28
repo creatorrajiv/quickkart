@@ -1,22 +1,17 @@
 /**
  * NotificationBell — In-App Notifications Dropdown
  * ──────────────────────────────────────────────────────────────────────────
- * Drop into any page header:
+ *  v2 — Portal-based dropdown that escapes ANY parent overflow:hidden.
+ *  Previously the dropdown was clipped by gradient headers that have
+ *  overflow-hidden for decorative blobs. Now we render to document.body
+ *  and position the dropdown using the bell button's bounding rect.
  *
- *   import { NotificationBell } from '@/components/common';
- *   <NotificationBell />
- *
- * Behavior:
- *   • Shows a bell icon with an unread count badge.
- *   • Click → dropdown with the 30 most recent notifications.
- *   • Realtime: new notifications appear instantly via Supabase channel.
- *   • Clicking a notification marks it read and (if it has an order_id)
- *     navigates to the appropriate detail page based on the user's role.
- *
- * It silently does nothing for users that aren't signed in.
+ *  Bonus: vibrates the phone when a new order assignment ping arrives
+ *  for agents — important when they're driving.
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
@@ -45,7 +40,9 @@ export default function NotificationBell() {
   const [items,    setItems]    = useState([]);
   const [unread,   setUnread]   = useState(0);
   const [loading,  setLoading]  = useState(false);
-  const wrapperRef = useRef(null);
+  const buttonRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [position, setPosition] = useState({ top: 0, right: 0 });
 
   // ── Initial load + realtime subscription ─────────────────────────────────
   useEffect(() => {
@@ -71,13 +68,19 @@ export default function NotificationBell() {
     const channel = subscribeToNotifications(userId, (row) => {
       setItems(prev => [row, ...prev].slice(0, 30));
       setUnread(prev => prev + 1);
-      // Pop a toast + sound — sound is "order" for new-order pings,
-      // "notification" for everything else.
+
+      // Toast + sound — heavier "order" tone for new-order pings
       const isOrderPing = ['shop_new_order', 'agent_new_assignment', 'order_placed'].includes(row.type);
       notify(row.title, {
         description: row.body,
         sound: isOrderPing ? 'order' : 'notification',
       });
+
+      // Vibrate the phone for the agent's new-assignment pings.
+      // Most relevant when they might be driving and can't look at the screen.
+      if (row.type === 'agent_new_assignment' && typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([200, 100, 200, 100, 400]); } catch {}
+      }
     });
 
     return () => {
@@ -86,11 +89,35 @@ export default function NotificationBell() {
     };
   }, [session?.user?.id]);
 
+  // ── Position the dropdown relative to the bell button ───────────────────
+  // We recompute on open + on scroll/resize while open so it tracks correctly.
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPosition({
+        top:   rect.bottom + 8,                             // 8px gap
+        right: window.innerWidth - rect.right,              // align right edge
+      });
+    };
+    reposition();
+    window.addEventListener('scroll',  reposition, true);
+    window.addEventListener('resize',  reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
+
   // ── Close on outside click ───────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     const onClick = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+      // Inside the button or inside the portaled dropdown? keep open.
+      if (buttonRef.current?.contains(e.target)) return;
+      if (dropdownRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
@@ -107,8 +134,6 @@ export default function NotificationBell() {
     setOpen(false);
 
     if (!n.order_id) return;
-    // Route based on role — customer goes to /orders/:id, agent/shopkeeper
-    // see it in their dashboards. Admin goes to admin orders page.
     if (profile?.role === 'customer')        navigate(`/orders/${n.order_id}`);
     else if (profile?.role === 'agent')      navigate('/agent/active-orders');
     else if (profile?.role === 'shopkeeper') navigate('/shopkeeper/dashboard');
@@ -124,8 +149,9 @@ export default function NotificationBell() {
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setOpen(o => !o)}
         type="button"
         aria-label="Notifications"
@@ -141,13 +167,23 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-1rem)] overflow-hidden
-          rounded-xl border border-gray-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
-            <p className="text-sm font-semibold text-gray-900">Notifications</p>
+      {/* Portal: renders to document.body so parent overflow:hidden can't clip */}
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: 'fixed',
+            top:    `${position.top}px`,
+            right:  `${position.right}px`,
+            zIndex: 9999,
+            maxWidth: 'calc(100vw - 1rem)',
+          }}
+          className="w-80 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-pop animate-slide-up"
+        >
+          <div className="flex items-center justify-between border-b border-ink-100 px-4 py-2.5">
+            <p className="text-sm font-bold text-ink-900">Notifications</p>
             {unread > 0 && (
-              <button onClick={handleMarkAll} className="text-xs font-medium text-orange-600 hover:underline">
+              <button onClick={handleMarkAll} className="text-xs font-bold text-brand-600 hover:underline">
                 Mark all read
               </button>
             )}
@@ -156,16 +192,16 @@ export default function NotificationBell() {
           <div className="max-h-96 overflow-y-auto">
             {loading && (
               <ul className="space-y-1 p-2">
-                {[1,2,3].map(i => <li key={i} className="h-14 animate-pulse rounded-lg bg-gray-100" />)}
+                {[1,2,3].map(i => <li key={i} className="h-14 animate-pulse rounded-lg bg-ink-100" />)}
               </ul>
             )}
 
             {!loading && items.length === 0 && (
-              <p className="px-4 py-10 text-center text-sm text-gray-500">No notifications yet.</p>
+              <p className="px-4 py-10 text-center text-sm text-ink-500">No notifications yet.</p>
             )}
 
             {!loading && items.length > 0 && (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-ink-100">
                 {items.map(n => {
                   const icon = TYPE_ICONS[n.type] ?? '🔔';
                   const isUnread = !n.read_at;
@@ -174,19 +210,19 @@ export default function NotificationBell() {
                       <button
                         onClick={() => handleClickItem(n)}
                         className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors
-                          ${isUnread ? 'bg-orange-50/40 hover:bg-orange-50' : 'hover:bg-gray-50'}`}
+                          ${isUnread ? 'bg-brand-50/40 hover:bg-brand-50' : 'hover:bg-ink-50'}`}
                       >
                         <span className="mt-0.5 text-lg">{icon}</span>
                         <div className="min-w-0 flex-1">
-                          <p className={`text-sm ${isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                          <p className={`text-sm ${isUnread ? 'font-bold text-ink-900' : 'text-ink-700'}`}>
                             {n.title}
                           </p>
-                          {n.body && <p className="mt-0.5 text-xs text-gray-500">{n.body}</p>}
-                          <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">
+                          {n.body && <p className="mt-0.5 text-xs text-ink-500">{n.body}</p>}
+                          <p className="mt-1 text-[10px] uppercase tracking-wide text-ink-400">
                             {timeAgo(n.created_at)}
                           </p>
                         </div>
-                        {isUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-orange-500" />}
+                        {isUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-brand-500" />}
                       </button>
                     </li>
                   );
@@ -194,13 +230,13 @@ export default function NotificationBell() {
               </ul>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
-// ─── Tiny "x minutes ago" helper ────────────────────────────────────────────
 function timeAgo(iso) {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (diff < 60)    return 'just now';

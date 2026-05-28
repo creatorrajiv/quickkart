@@ -256,7 +256,32 @@ export default function ActiveOrdersPage() {
             </ul>
           </section>
         )}
+
+        {/* Spacer so sticky action bar doesn't cover the last card */}
+        {inTransit.length === 1 && <div className="h-24" />}
       </main>
+
+      {/* Sticky "Mark Delivered" bar — only shows when exactly ONE in-transit
+          delivery. Most agents carry one at a time; one-tap completion. */}
+      {inTransit.length === 1 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 px-4 py-3 bg-white border-t border-ink-100 shadow-pop">
+          <div className="mx-auto max-w-5xl">
+            <Button
+              onClick={() => handleAdvance(inTransit[0])}
+              loading={actingId === inTransit[0].id}
+              size="lg"
+              fullWidth
+              rightIcon={!actingId && (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            >
+              {actingId === inTransit[0].id ? 'Marking delivered…' : `Mark Delivered · ${formatPrice(inTransit[0].total_price)}`}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
