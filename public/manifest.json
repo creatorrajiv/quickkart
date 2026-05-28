@@ -1,0 +1,24 @@
+{
+  "name": "QuickKart — Hyperlocal Delivery",
+  "short_name": "QuickKart",
+  "description": "Groceries, meats and meals delivered hyperlocal in minutes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fc4a1a",
+  "theme_color": "#fc4a1a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+dist-ssr/
+build/
+
+# Environment & secrets — NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.production.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Mobile platform folders (not used now, but reserved)
+android/
+ios/
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# OS / misc
+*.swp
+.cache/
