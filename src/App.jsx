@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster }         from 'sonner';
 import { AuthProvider }    from './context/AuthContext';
 import { CartProvider }    from './context/CartProvider';
+import { WishlistProvider } from './context/WishlistContext';
 import { I18nProvider }    from './i18n/I18nProvider';
 
 import { RoleRouter }      from './components/layout';
@@ -25,6 +26,7 @@ import {
   OrdersPage,
   OrderDetailPage,
 } from './pages/customer';
+import WishlistPage from './pages/customer/WishlistPage';
 import {
   ActiveOrdersPage,
   OrderHistoryPage as AgentHistoryPage,
@@ -54,6 +56,7 @@ export default function App() {
     <I18nProvider>
     <AuthProvider>
       <CartProvider>
+      <WishlistProvider>
         {/* Sonner toasts — see lib/notify.js for the helpers that fire these. */}
         <Toaster
           position="top-right"
@@ -76,6 +79,7 @@ export default function App() {
             <Route path="/cart"          element={<CartPage />} />
             <Route path="/orders"        element={<OrdersPage />} />
             <Route path="/orders/:id"    element={<OrderDetailPage />} />
+            <Route path="/wishlist"      element={<WishlistPage />} />
 
             {/* ── Admin ── */}
             <Route path="/admin/products" element={<ProductsPage />} />
@@ -109,6 +113,7 @@ export default function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </BrowserRouter>
+      </WishlistProvider>
       </CartProvider>
     </AuthProvider>
     </I18nProvider>

@@ -10,6 +10,8 @@
 import { useState } from 'react';
 import { formatPrice } from '../../config/business';
 import { useTranslation } from '../../i18n/I18nProvider';
+import { useWishlist } from '../../context/WishlistContext';
+import { useAuth } from '../../context/AuthContext';
 
 const CATEGORY_EMOJI = {
   grocery: '🥦',
@@ -26,8 +28,14 @@ export default function ProductCard({
   onDecrement,
 }) {
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const { ids: wishIds, toggle: toggleWish, busy: wishBusy } = useWishlist();
   const inCart = quantityInCart > 0;
   const [galleryOpen, setGalleryOpen] = useState(false);
+
+  const isFav   = wishIds.has(product.id);
+  const isWishBusy = wishBusy.has(product.id);
+  const canWish = profile?.role === 'customer';
 
   // `product.category` may be the joined object or legacy enum string.
   const isCategoryObj = product.category && typeof product.category === 'object';
@@ -72,7 +80,7 @@ export default function ProductCard({
         )}
 
         {hasMultiple && (
-          <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-ink-900/70 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold">
+          <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-ink-900/70 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold">
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 6h16v12H4V6z" />
             </svg>
@@ -80,6 +88,23 @@ export default function ProductCard({
           </span>
         )}
       </button>
+
+      {/* Wishlist heart — positioned over the image, top-right */}
+      {canWish && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); toggleWish(product.id); }}
+          disabled={isWishBusy}
+          aria-label={isFav ? 'Remove from wishlist' : 'Add to wishlist'}
+          className={`absolute top-2 right-2 z-10 h-9 w-9 rounded-full flex items-center justify-center backdrop-blur shadow transition-all active:scale-90
+            ${isFav ? 'bg-red-500 text-white' : 'bg-white/95 text-ink-500 hover:text-red-500'}
+            ${isWishBusy ? 'opacity-60 animate-pulse-soft' : ''}`}
+        >
+          <svg className={`h-5 w-5 ${isFav ? '' : 'fill-none'}`} fill={isFav ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isFav ? 0 : 2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
+          </svg>
+        </button>
+      )}
 
       {/* Body */}
       <div className="flex flex-1 flex-col gap-2 p-3 pt-3">

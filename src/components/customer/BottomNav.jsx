@@ -15,14 +15,15 @@ export default function BottomNav() {
   const { t } = useTranslation();
 
   const TABS = [
-    { to: '/shop',    label: t('common.home'),    icon: HomeIcon },
-    { to: '/orders',  label: t('common.orders'),  icon: BagIcon  },
-    { to: '/profile', label: t('common.profile'), icon: UserIcon },
+    { to: '/shop',     label: t('common.home'),    icon: HomeIcon },
+    { to: '/wishlist', label: '❤',                 icon: HeartIcon },
+    { to: '/orders',   label: t('common.orders'),  icon: BagIcon  },
+    { to: '/profile',  label: t('common.profile'), icon: UserIcon },
   ];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 sm:hidden bg-white/95 backdrop-blur border-t border-ink-100 pb-[env(safe-area-inset-bottom)]">
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {TABS.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <NavLink
@@ -71,6 +72,13 @@ function UserIcon({ active }) {
   return (
     <svg className="h-5 w-5" fill={active ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M16 14a4 4 0 10-8 0M12 14a8 8 0 00-8 8h16a8 8 0 00-8-8z" />
+    </svg>
+  );
+}
+function HeartIcon({ active }) {
+  return (
+    <svg className="h-5 w-5" fill={active ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
     </svg>
   );
 }
