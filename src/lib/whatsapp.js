@@ -79,6 +79,25 @@ export function buildOrderMessage({ items, deliveryAddress, paymentMethod, total
  *
  * @returns {boolean} true if opened, false if no business number configured
  */
+/**
+ * Open a WhatsApp chat with a specific phone number, optionally pre-filling
+ * a message. Useful for customer↔agent contact during delivery.
+ *
+ * @param {string} phone        - 10-15 digits (will be cleaned to digits only)
+ * @param {string} [message]    - pre-filled message
+ * @returns {boolean}           - true if opened
+ */
+export function openWhatsAppChat(phone, message = '') {
+  if (!phone) return false;
+  const digits = String(phone).replace(/[^0-9]/g, '');
+  if (digits.length < 10) return false;
+  // If 10 digits and starts with 9/8/7/6 — Indian mobile, add 91 prefix
+  const e164 = digits.length === 10 && /^[6-9]/.test(digits) ? `91${digits}` : digits;
+  const url = `https://wa.me/${e164}${message ? `?text=${encodeURIComponent(message)}` : ''}`;
+  window.open(url, '_blank', 'noopener');
+  return true;
+}
+
 export function openWhatsAppOrder(cartInput) {
   const number = getBusinessNumber();
   if (!number) return false;

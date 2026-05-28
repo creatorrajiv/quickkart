@@ -30,6 +30,7 @@ const NAV_LINKS = [
   { to: '/admin/shopkeepers',  label: 'Shopkeepers', icon: '🧑‍🍳' },
   { to: '/admin/banners',      label: 'Banners',     icon: '🖼️' },
   { to: '/admin/coupons',      label: 'Coupons',     icon: '🎟️' },
+  { to: '/admin/reviews',      label: 'Reviews',     icon: '⭐' },
 ];
 
 export default function AdminShell({ title, subtitle, actions, children }) {

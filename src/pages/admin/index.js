@@ -8,4 +8,5 @@ export { default as AdminDashboardPage } from './DashboardPage';
 export { default as BannersPage }        from './BannersPage';
 export { default as CategoriesPage }     from './CategoriesPage';
 export { default as CouponsPage }        from './CouponsPage';
+export { default as ReviewsPage }        from './ReviewsPage';
 // export { default as DashboardPage } from './DashboardPage';  // next phase

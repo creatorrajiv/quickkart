@@ -54,7 +54,14 @@ import { calculateOrderTotals }  from '../config/business';
  * @param {PlaceOrderInput} input
  * @returns {Promise<PlaceOrderResult>}
  */
-export async function placeOrder({ items, paymentMethod, deliveryAddress, couponCode = null }) {
+export async function placeOrder({
+  items,
+  paymentMethod,
+  deliveryAddress,
+  couponCode = null,
+  deliverySlot = null,        // ISO timestamp or null for ASAP
+  deliverySlotLabel = null,
+}) {
   // ── Local validation (fast fail) ────────────────────────────────────────
   if (!Array.isArray(items) || items.length === 0) {
     return { orderId: null, totals: null, error: new Error('Your cart is empty.') };
@@ -91,6 +98,15 @@ export async function placeOrder({ items, paymentMethod, deliveryAddress, coupon
   if (error) {
     console.error('[ordersService] placeOrder failed:', error);
     return { orderId: null, totals, error };
+  }
+
+  // Slot is stored separately after creation (RPC signature stays stable).
+  // The RPC always sets status='placed' regardless of slot.
+  if (orderId && (deliverySlot || deliverySlotLabel)) {
+    await supabase.from('orders').update({
+      delivery_slot:       deliverySlot,
+      delivery_slot_label: deliverySlotLabel,
+    }).eq('id', orderId);
   }
 
   return { orderId, totals, error: null };

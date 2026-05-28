@@ -27,6 +27,7 @@ import {
 } from '../../services/ordersService';
 import { setOnlineStatus, updateAgentLocation } from '../../services/agentsService';
 import { startWatching, isGeolocationSupported } from '../../lib/geolocation';
+import { openWhatsAppChat } from '../../lib/whatsapp';
 import { NotificationBell } from '../../components/common';
 import { formatPrice } from '../../config/business';
 import { notify } from '../../lib/notify';
@@ -409,6 +410,13 @@ function RouteRow({ kind, label, name, detail, phone, mapsQuery, highlight }) {
             <PhoneIcon /> Call
           </a>
         )}
+        {phone && (
+          <button
+            onClick={() => openWhatsAppChat(phone, `Hi from QuickKart — your ${kind === 'pickup' ? 'order is being picked up' : 'order is on the way'}.`)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] text-white px-3 h-10 text-xs font-bold shadow hover:bg-[#1ebe57] active:scale-95 transition-all">
+            <WhatsAppIcon />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -436,6 +444,13 @@ function PhoneIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 010 1.414L9.414 8.586a11.042 11.042 0 005.657 5.657l1.464-1.464a1 1 0 011.414 0l2.414 2.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </svg>
+  );
+}
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2z"/>
     </svg>
   );
 }

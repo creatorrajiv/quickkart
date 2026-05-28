@@ -6,6 +6,7 @@ export { default as SearchBar }        from './SearchBar';
 export { default as CartFAB }          from './CartFAB';
 export { default as BottomNav }        from './BottomNav';
 export { default as BannerCarousel }   from './BannerCarousel';
+export { default as DeliverySlotPicker } from './DeliverySlotPicker';
 export { default as CartLineItem }     from './CartLineItem';
 export { default as AddressForm }      from './AddressForm';
 export { default as AddressPicker }    from './AddressPicker';

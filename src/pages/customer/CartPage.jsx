@@ -31,6 +31,7 @@ import {
   AddressPicker,
   OrderSummary,
   PaymentSelector,
+  DeliverySlotPicker,
 } from '../../components/customer';
 import { Button } from '../../ui';
 
@@ -54,6 +55,9 @@ export default function CartPage() {
   const [couponInput,   setCouponInput]   = useState('');
   const [couponApplied, setCouponApplied] = useState(null); // { code, discount_amount, message }
   const [couponBusy,    setCouponBusy]    = useState(false);
+
+  // Delivery slot
+  const [slot, setSlot] = useState({ value: null, label: 'ASAP' });
 
   const totalsBefore = useMemo(() => calculateOrderTotals(subtotal), [subtotal]);
   const discount     = couponApplied?.discount_amount ?? 0;
@@ -94,6 +98,8 @@ export default function CartPage() {
     const { orderId, error } = await placeOrder({
       items, paymentMethod, deliveryAddress: address,
       couponCode: couponApplied?.code ?? null,
+      deliverySlot:      slot.value,
+      deliverySlotLabel: slot.label,
     });
     if (error) {
       setPlaceError(error.message ?? 'Could not place order.');
@@ -159,6 +165,8 @@ export default function CartPage() {
         {profile && (
           <AddressPicker userId={profile.id} value={address} onChange={setAddress} />
         )}
+
+        <DeliverySlotPicker value={slot.value} onChange={setSlot} />
 
         <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} />
 

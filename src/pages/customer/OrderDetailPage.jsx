@@ -35,6 +35,7 @@ import {
 } from '../../config/orderStatus';
 import { NotificationBell } from '../../components/common';
 import { Button, Textarea, Badge } from '../../ui';
+import { openWhatsAppChat } from '../../lib/whatsapp';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -189,6 +190,12 @@ export default function OrderDetailPage() {
             <div className="min-w-0 flex-1">
               <h3 className="font-display text-base font-bold text-ink-900">Delivery to</h3>
               <p className="mt-1.5 text-sm text-ink-700 whitespace-pre-line">{order.delivery_address}</p>
+              {order.delivery_slot_label && (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 px-2.5 py-1 text-[11px] font-bold text-brand-700">
+                  <span>📅</span>
+                  {order.delivery_slot_label}
+                </p>
+              )}
             </div>
             <Button
               variant="outline"
@@ -421,7 +428,7 @@ function AgentCard({ agent, address }) {
             </p>
           )}
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {hasLiveLocation && (
             <button onClick={() => openInMaps(`${agent.current_lat},${agent.current_lng}`)}
               className="rounded-xl bg-green-500 hover:bg-green-600 text-white px-3 h-9 inline-flex items-center gap-1.5 text-xs font-bold shadow active:scale-95 transition-all">
@@ -433,6 +440,13 @@ function AgentCard({ agent, address }) {
               className="rounded-xl border border-ink-200 bg-white px-3 h-9 inline-flex items-center gap-1.5 text-xs font-bold text-ink-700 hover:bg-ink-50 transition-all">
               <PhoneIcon /> Call
             </a>
+          )}
+          {agent.phone && (
+            <button
+              onClick={() => openWhatsAppChat(agent.phone, 'Hi! Regarding my QuickKart order delivery.')}
+              className="rounded-xl bg-[#25D366] hover:bg-[#1ebe57] text-white px-3 h-9 inline-flex items-center gap-1.5 text-xs font-bold shadow active:scale-95 transition-all">
+              <WhatsAppIcon /> Chat
+            </button>
           )}
         </div>
       </div>
@@ -575,6 +589,13 @@ function PhoneIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 010 1.414L9.414 8.586a11.042 11.042 0 005.657 5.657l1.464-1.464a1 1 0 011.414 0l2.414 2.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </svg>
+  );
+}
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zm4.52 14.15c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.57.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.16-.47-.28z"/>
     </svg>
   );
 }
