@@ -75,6 +75,16 @@ export default function ProfilePage() {
 
       <main className="mx-auto max-w-3xl space-y-5 px-4 py-5 sm:px-6">
         {profile.role === 'customer' && <LoyaltySection />}
+        {profile.role === 'customer' && (
+          <Card title="Quick links">
+            <div className="grid grid-cols-2 gap-2">
+              <Link to="/wishlist"      className="rounded-xl bg-white border border-ink-100 px-4 py-3 text-sm font-bold text-ink-900 hover:border-brand-300 hover:bg-brand-50 active:scale-[0.99] transition-all">❤️ Wishlist</Link>
+              <Link to="/subscriptions" className="rounded-xl bg-white border border-ink-100 px-4 py-3 text-sm font-bold text-ink-900 hover:border-brand-300 hover:bg-brand-50 active:scale-[0.99] transition-all">🔁 Subscriptions</Link>
+              <Link to="/orders"        className="rounded-xl bg-white border border-ink-100 px-4 py-3 text-sm font-bold text-ink-900 hover:border-brand-300 hover:bg-brand-50 active:scale-[0.99] transition-all">📦 My orders</Link>
+              <Link to="/cart"          className="rounded-xl bg-white border border-ink-100 px-4 py-3 text-sm font-bold text-ink-900 hover:border-brand-300 hover:bg-brand-50 active:scale-[0.99] transition-all">🛒 Cart</Link>
+            </div>
+          </Card>
+        )}
         <AccountSection profile={profile} onSave={updateProfile} />
         <LanguageSection />
         <PasswordSection />

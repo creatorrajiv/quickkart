@@ -26,7 +26,8 @@ import {
   OrdersPage,
   OrderDetailPage,
 } from './pages/customer';
-import WishlistPage from './pages/customer/WishlistPage';
+import WishlistPage      from './pages/customer/WishlistPage';
+import SubscriptionsPage from './pages/customer/SubscriptionsPage';
 import {
   ActiveOrdersPage,
   OrderHistoryPage as AgentHistoryPage,
@@ -80,6 +81,7 @@ export default function App() {
             <Route path="/orders"        element={<OrdersPage />} />
             <Route path="/orders/:id"    element={<OrderDetailPage />} />
             <Route path="/wishlist"      element={<WishlistPage />} />
+            <Route path="/subscriptions" element={<SubscriptionsPage />} />
 
             {/* ── Admin ── */}
             <Route path="/admin/products" element={<ProductsPage />} />

@@ -26,7 +26,8 @@ import { openWhatsAppOrder, isWhatsAppShareEnabled } from '../../lib/whatsapp';
 import { validateCoupon }               from '../../services/couponsService';
 import { fetchMyLoyalty }                from '../../services/loyaltyService';
 import { LOYALTY, maxRedeemablePoints }  from '../../config/business';
-import { Input } from '../../ui';
+import { createSubscription }            from '../../services/subscriptionsService';
+import { Input, Modal, Select, Field }   from '../../ui';
 
 import {
   CartLineItem,
@@ -64,6 +65,31 @@ export default function CartPage() {
   // Loyalty redemption
   const [loyaltyBalance, setLoyaltyBalance] = useState(0);
   const [redeemPoints,   setRedeemPoints]   = useState(0);
+
+  // Subscription save modal
+  const [subModalOpen, setSubModalOpen] = useState(false);
+  const [subSaving,    setSubSaving]    = useState(false);
+  const [subForm,      setSubForm]      = useState({ name: '', frequencyDays: 7 });
+
+  const handleSaveSubscription = async () => {
+    if (!profile?.id) return;
+    if (!address.trim()) { notify.error('Pick an address first'); return; }
+    if (items.length === 0) { notify.error('Cart is empty'); return; }
+    setSubSaving(true);
+    const { error } = await createSubscription({
+      userId:          profile.id,
+      name:            subForm.name?.trim() || `Cart from ${new Date().toLocaleDateString()}`,
+      items,
+      deliveryAddress: address,
+      paymentMethod,
+      frequencyDays:   Number(subForm.frequencyDays) || 7,
+    });
+    setSubSaving(false);
+    if (error) { notify.error('Could not save subscription', error.message); return; }
+    setSubModalOpen(false);
+    setSubForm({ name: '', frequencyDays: 7 });
+    notify.success('Subscription saved', 'Check it in your Subscriptions page.');
+  };
 
   // Load balance when cart mounts
   useEffect(() => {
@@ -284,6 +310,17 @@ export default function CartPage() {
           </div>
         )}
 
+        {/* Save as subscription — only if there's an address selected */}
+        {address.trim() && (
+          <button
+            type="button"
+            onClick={() => setSubModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-white border-2 border-dashed border-brand-300 text-brand-700 font-bold py-3 hover:bg-brand-50 active:scale-[0.98] transition-all"
+          >
+            <span className="text-lg">🔁</span> Save these items as a subscription
+          </button>
+        )}
+
         {/* WhatsApp share — only shown if business number is configured */}
         {isWhatsAppShareEnabled() && (
           <button
@@ -307,6 +344,40 @@ export default function CartPage() {
           </button>
         )}
       </main>
+
+      {/* Subscription save modal */}
+      {subModalOpen && (
+        <Modal open onClose={() => setSubModalOpen(false)} title="Save as subscription" size="md">
+          <form onSubmit={(e) => { e.preventDefault(); handleSaveSubscription(); }} className="px-5 py-4 space-y-4">
+            <p className="text-sm text-ink-600">
+              Save these {count} items as a template. Re-order any time from your Subscriptions page.
+            </p>
+            <Field label="Name" required>
+              <Input
+                value={subForm.name}
+                onChange={e => setSubForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Weekly groceries"
+                required
+              />
+            </Field>
+            <Field label="Reminder frequency" hint="When should we remind you to re-order? Auto-creation arrives in a later update.">
+              <Select
+                value={subForm.frequencyDays}
+                onChange={e => setSubForm(f => ({ ...f, frequencyDays: Number(e.target.value) }))}
+              >
+                <option value={1}>Daily</option>
+                <option value={7}>Weekly</option>
+                <option value={14}>Every 2 weeks</option>
+                <option value={30}>Monthly</option>
+              </Select>
+            </Field>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setSubModalOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={subSaving}>Save subscription</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {/* Sticky Place Order bar */}
       <div className="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-ink-100 px-4 py-3 sm:px-6 shadow-pop">
