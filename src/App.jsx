@@ -9,6 +9,8 @@ import { RoleRouter }      from './components/layout';
 
 import LoginPage           from './pages/auth/LoginPage';
 import RegisterPage        from './pages/auth/RegisterPage';
+import ForgotPasswordPage  from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage   from './pages/auth/ResetPasswordPage';
 import { ProductsPage, AdminOrdersPage, ShopsPage, AgentsPage, ShopkeepersPage, AdminDashboardPage, BannersPage, CategoriesPage, CouponsPage, ReviewsPage } from './pages/admin';
 import ProfilePage  from './pages/shared/ProfilePage';
 import NotFoundPage from './pages/shared/NotFoundPage';
@@ -72,8 +74,10 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             {/* ── Auth ── */}
-            <Route path="/login"    element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login"            element={<LoginPage />} />
+            <Route path="/register"         element={<RegisterPage />} />
+            <Route path="/forgot-password"  element={<ForgotPasswordPage />} />
+            <Route path="/reset-password"   element={<ResetPasswordPage />} />
 
             {/* ── Customer ── */}
             <Route path="/shop"          element={<CustomerHomePage />} />
