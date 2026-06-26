@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import AdminShell from '../../components/admin/AdminShell';
 import { useAppSettings } from '../../context/AppSettingsContext';
-import { supabase } from '../../lib/supabaseClient';
 import { notify } from '../../lib/notify';
 import { Button, Input, Field } from '../../ui';
 
@@ -38,29 +37,21 @@ export default function AppSettingsPage() {
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { notify.error('Logo must be under 2 MB'); return; }
+    if (file.size > 1 * 1024 * 1024) { notify.error('Logo must be under 1 MB'); return; }
 
     setUploading(true);
-    const ext  = file.name.split('.').pop();
-    const path = `logo/shop-logo.${ext}`;
 
-    const { error: upErr } = await supabase.storage
-      .from('app-assets')
-      .upload(path, file, { upsert: true, contentType: file.type });
-
-    if (upErr) {
-      notify.error('Upload failed', upErr.message);
+    // Convert to base64 data URL — no storage bucket needed
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target.result;
+      const { error } = await update('app_logo_url', dataUrl);
       setUploading(false);
-      return;
-    }
-
-    const { data } = supabase.storage.from('app-assets').getPublicUrl(path);
-    const url = `${data.publicUrl}?t=${Date.now()}`; // cache-bust
-
-    const { error: saveErr } = await update('app_logo_url', url);
-    setUploading(false);
-    if (saveErr) notify.error('Failed to save logo URL', saveErr.message);
-    else { setLogoUrl(url); notify.success('Logo updated!'); }
+      if (error) notify.error('Failed to save logo', error.message);
+      else { setLogoUrl(dataUrl); notify.success('Logo updated!'); }
+    };
+    reader.onerror = () => { setUploading(false); notify.error('Could not read file'); };
+    reader.readAsDataURL(file);
   };
 
   const handleRemoveLogo = async () => {
