@@ -13,7 +13,7 @@
 import { useAppSettings } from '../../context/AppSettingsContext';
 
 export default function AuthShell({ title, tagline, children }) {
-  const { app_name, app_tagline } = useAppSettings();
+  const { app_name, app_tagline, app_logo_url } = useAppSettings();
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-ink-50">
 
@@ -27,9 +27,13 @@ export default function AuthShell({ title, tagline, children }) {
         {/* Logo + tagline */}
         <div className="relative px-6 sm:px-10 lg:px-16 py-8 lg:py-16 flex flex-col h-full min-h-[260px] lg:min-h-screen">
           <div className="flex items-center gap-2">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-brand-500 text-2xl shadow-pop">
-              ⚡
-            </span>
+            {app_logo_url ? (
+              <img src={app_logo_url} alt={app_name} className="h-12 w-12 rounded-2xl object-cover shadow-pop" />
+            ) : (
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-brand-500 text-2xl shadow-pop">
+                ⚡
+              </span>
+            )}
             <div>
               <p className="font-display text-2xl font-extrabold leading-none">{app_name}</p>
               <p className="text-[10px] uppercase tracking-widest text-white/80 mt-0.5">{app_tagline}</p>

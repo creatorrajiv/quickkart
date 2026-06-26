@@ -38,7 +38,7 @@ const NAV_LINKS = [
 export default function AdminShell({ title, subtitle, actions, children }) {
   const navigate = useNavigate();
   const { session, profile, loading: authLoading, signOut } = useAuth();
-  const { app_name } = useAppSettings();
+  const { app_name, app_logo_url } = useAppSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
@@ -63,9 +63,16 @@ export default function AdminShell({ title, subtitle, actions, children }) {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform md:translate-x-0
         ${drawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         bg-gradient-to-b from-brand-600 via-brand-700 to-brand-900 text-white shadow-pop overflow-y-auto`}>
-        <div className="px-5 py-5 border-b border-white/10">
-          <p className="font-display text-xl font-extrabold leading-none">{app_name}</p>
-          <p className="text-[11px] uppercase tracking-wider text-white/70 mt-1">Admin Console</p>
+        <div className="px-5 py-5 border-b border-white/10 flex items-center gap-3">
+          {app_logo_url ? (
+            <img src={app_logo_url} alt={app_name} className="h-9 w-9 rounded-xl object-cover shadow" />
+          ) : (
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-brand-500 text-lg shadow">⚡</span>
+          )}
+          <div>
+            <p className="font-display text-xl font-extrabold leading-none">{app_name}</p>
+            <p className="text-[11px] uppercase tracking-wider text-white/70 mt-0.5">Admin Console</p>
+          </div>
         </div>
 
         <nav className="px-3 py-4 space-y-1">
