@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
+import { useAppSettings } from '../../context/AppSettingsContext';
 import { NotificationBell } from '../common';
 import { Button } from '../../ui';
 
@@ -31,11 +32,13 @@ const NAV_LINKS = [
   { to: '/admin/banners',      label: 'Banners',     icon: '🖼️' },
   { to: '/admin/coupons',      label: 'Coupons',     icon: '🎟️' },
   { to: '/admin/reviews',      label: 'Reviews',     icon: '⭐' },
+  { to: '/admin/settings',     label: 'Settings',    icon: '⚙️' },
 ];
 
 export default function AdminShell({ title, subtitle, actions, children }) {
   const navigate = useNavigate();
   const { session, profile, loading: authLoading, signOut } = useAuth();
+  const { app_name } = useAppSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function AdminShell({ title, subtitle, actions, children }) {
         ${drawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         bg-gradient-to-b from-brand-600 via-brand-700 to-brand-900 text-white shadow-pop overflow-y-auto`}>
         <div className="px-5 py-5 border-b border-white/10">
-          <p className="font-display text-xl font-extrabold leading-none">QuickKart</p>
+          <p className="font-display text-xl font-extrabold leading-none">{app_name}</p>
           <p className="text-[11px] uppercase tracking-wider text-white/70 mt-1">Admin Console</p>
         </div>
 

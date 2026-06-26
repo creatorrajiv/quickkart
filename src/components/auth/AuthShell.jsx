@@ -10,7 +10,10 @@
  *    </AuthShell>
  */
 
+import { useAppSettings } from '../../context/AppSettingsContext';
+
 export default function AuthShell({ title, tagline, children }) {
+  const { app_name, app_tagline } = useAppSettings();
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-ink-50">
 
@@ -28,8 +31,8 @@ export default function AuthShell({ title, tagline, children }) {
               ⚡
             </span>
             <div>
-              <p className="font-display text-2xl font-extrabold leading-none">QuickKart</p>
-              <p className="text-[10px] uppercase tracking-widest text-white/80 mt-0.5">Hyperlocal Delivery</p>
+              <p className="font-display text-2xl font-extrabold leading-none">{app_name}</p>
+              <p className="text-[10px] uppercase tracking-widest text-white/80 mt-0.5">{app_tagline}</p>
             </div>
           </div>
 
@@ -58,7 +61,7 @@ export default function AuthShell({ title, tagline, children }) {
 
           {/* Footer line */}
           <p className="hidden lg:block mt-auto pt-8 text-[11px] text-white/60">
-            © {new Date().getFullYear()} QuickKart · Made with ❤️ for local shops
+            © {new Date().getFullYear()} {app_name} · Made with ❤️ for local shops
           </p>
         </div>
       </aside>

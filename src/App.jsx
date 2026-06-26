@@ -6,11 +6,13 @@ import { WishlistProvider } from './context/WishlistContext';
 import { I18nProvider }    from './i18n/I18nProvider';
 
 import { RoleRouter }      from './components/layout';
+import { AppSettingsProvider } from './context/AppSettingsContext';
 
 import LoginPage           from './pages/auth/LoginPage';
 import RegisterPage        from './pages/auth/RegisterPage';
 import ForgotPasswordPage  from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage   from './pages/auth/ResetPasswordPage';
+import AppSettingsPage     from './pages/admin/AppSettingsPage';
 import { ProductsPage, AdminOrdersPage, ShopsPage, AgentsPage, ShopkeepersPage, AdminDashboardPage, BannersPage, CategoriesPage, CouponsPage, ReviewsPage } from './pages/admin';
 import ProfilePage  from './pages/shared/ProfilePage';
 import NotFoundPage from './pages/shared/NotFoundPage';
@@ -57,6 +59,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <I18nProvider>
+    <AppSettingsProvider>
     <AuthProvider>
       <CartProvider>
       <WishlistProvider>
@@ -98,6 +101,7 @@ export default function App() {
             <Route path="/admin/categories"    element={<CategoriesPage />} />
             <Route path="/admin/coupons"       element={<CouponsPage />} />
             <Route path="/admin/reviews"       element={<ReviewsPage />} />
+            <Route path="/admin/settings"      element={<AppSettingsPage />} />
 
             {/* ── Shared (public legal pages + private profile) ── */}
             <Route path="/profile" element={<ProfilePage />} />
@@ -123,6 +127,7 @@ export default function App() {
       </WishlistProvider>
       </CartProvider>
     </AuthProvider>
+    </AppSettingsProvider>
     </I18nProvider>
     </ErrorBoundary>
   );

@@ -12,11 +12,13 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useAppSettings } from '../../context/AppSettingsContext';
 
 const DISMISS_KEY = 'quickkart.install.dismissedAt';
 const NAG_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export default function InstallPrompt() {
+  const { app_name } = useAppSettings();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [visible,        setVisible]        = useState(false);
   const [isIOS,          setIsIOS]          = useState(false);
@@ -70,7 +72,7 @@ export default function InstallPrompt() {
       <div className="rounded-2xl bg-white shadow-pop border border-ink-100 p-4 flex items-start gap-3">
         <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white text-xl">⚡</span>
         <div className="flex-1 min-w-0">
-          <p className="font-display text-sm font-bold text-ink-900">Install QuickKart</p>
+          <p className="font-display text-sm font-bold text-ink-900">Install {app_name}</p>
           <p className="text-xs text-ink-600 mt-0.5">
             {isIOS
               ? 'Tap Share → "Add to Home Screen" for the full app experience.'
