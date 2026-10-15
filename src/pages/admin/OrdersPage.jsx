@@ -35,6 +35,7 @@ import { AssignmentModeToggle, AdminShell } from '../../components/admin';
 import { Button, Select } from '../../ui';
 import { downloadCSV } from '../../lib/csv';
 import { notify } from '../../lib/notify';
+import { refundOrder } from '../../services/refundsService';
 import { formatPrice } from '../../config/business';
 import {
   STATUS_ORDER,
@@ -226,6 +227,26 @@ export default function AdminOrdersPage() {
     notify.success(`Advanced ${advanced} order${advanced === 1 ? '' : 's'}`);
   };
 
+  // Refund handler
+  const handleRefund = async (order) => {
+    const fullAmount = Number(order.total_price);
+    const input = window.prompt(
+      `Refund amount for #${order.id.slice(0, 8)}?\n\n` +
+      `Order total: ₹${fullAmount.toFixed(2)}\n` +
+      `Leave default for full refund. Enter a lower number for partial.`,
+      String(fullAmount),
+    );
+    if (input === null) return;
+    const amount = Number(input);
+    if (!Number.isFinite(amount) || amount <= 0) { notify.error('Invalid amount'); return; }
+    const reason = window.prompt('Refund reason (optional)') ?? null;
+
+    const { data, error } = await refundOrder(order.id, { amount, reason });
+    if (error) { notify.error('Refund failed', error.message); return; }
+    setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...data } : o));
+    notify.success('Refund recorded', `Customer notified.`);
+  };
+
   // CSV export
   const handleExport = () => {
     downloadCSV(`orders-${new Date().toISOString().slice(0,10)}.csv`, filtered, [
@@ -366,7 +387,7 @@ export default function AdminOrdersPage() {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-function OrderRow({ order, agents, shops, selected, onToggleSelect, advancing, assigning, onAdvance, onAssign, onAssignShop }) {
+function OrderRow({ order, agents, shops, selected, onToggleSelect, advancing, assigning, onAdvance, onAssign, onAssignShop, onRefund }) {
   const shortId = order.id.split('-')[0];
   const colors = STATUS_COLORS[order.status] ?? STATUS_COLORS.placed;
   const next = getNextStatus(order.status);
@@ -418,6 +439,11 @@ function OrderRow({ order, agents, shops, selected, onToggleSelect, advancing, a
 
         <div className="flex flex-col items-end gap-2">
           <p className="text-sm font-bold text-gray-900">{formatPrice(order.total_price)}</p>
+          {order.refund_status === 'completed' && (
+            <span className="rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 uppercase tracking-wide">
+              💸 Refunded {formatPrice(order.refund_amount ?? 0)}
+            </span>
+          )}
           {next ? (
             <button
               onClick={onAdvance}
@@ -429,6 +455,15 @@ function OrderRow({ order, agents, shops, selected, onToggleSelect, advancing, a
             </button>
           ) : (
             <span className="text-xs font-medium text-green-700">Completed</span>
+          )}
+          {/* Refund button — available on cancelled or delivered, not yet refunded */}
+          {['cancelled','delivered'].includes(order.status) && order.refund_status !== 'completed' && onRefund && (
+            <button
+              onClick={onRefund}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 active:scale-95"
+            >
+              💸 Refund
+            </button>
           )}
         </div>
       </div>
